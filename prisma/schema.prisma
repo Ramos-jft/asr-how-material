@@ -3,7 +3,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 enum UserStatus {
@@ -117,12 +119,12 @@ model Permission {
 }
 
 model UserRole {
-  userId     String
-  roleId     String
-  createdAt  DateTime @default(now())
+  userId    String
+  roleId    String
+  createdAt DateTime @default(now())
 
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  role       Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
 
   @@id([userId, roleId])
 }
@@ -132,75 +134,75 @@ model RolePermission {
   permissionId String
   createdAt    DateTime   @default(now())
 
-  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
-  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
 
   @@id([roleId, permissionId])
 }
 
 model Customer {
-  id                        String          @id @default(cuid())
-  userId                    String?         @unique
-  name                      String
-  csaName                   String?
-  charge                    String?
-  phone                     String
-  email                     String          @unique
-  groupCode                 String
-  status                    CustomerStatus  @default(PENDING)
+  id                         String         @id @default(cuid())
+  userId                     String?        @unique
+  name                       String
+  csaName                    String?
+  charge                     String?
+  phone                      String
+  email                      String         @unique
+  groupCode                  String
+  status                     CustomerStatus @default(PENDING)
   temporaryPurchaseRemaining Int            @default(0)
-  approvedAt                DateTime?
-  approvedByUserId          String?
-  createdAt                 DateTime        @default(now())
-  updatedAt                 DateTime        @updatedAt
+  approvedAt                 DateTime?
+  approvedByUserId           String?
+  createdAt                  DateTime       @default(now())
+  updatedAt                  DateTime       @updatedAt
 
-  user                      User?           @relation(fields: [userId], references: [id], onDelete: SetNull)
-  approvedBy                User?           @relation("CustomerApprovedBy", fields: [approvedByUserId], references: [id], onDelete: SetNull)
-  address                   CustomerAddress?
-  orders                    Order[]
-  notifications             NotificationLog[]
+  user          User?             @relation(fields: [userId], references: [id], onDelete: SetNull)
+  approvedBy    User?             @relation("CustomerApprovedBy", fields: [approvedByUserId], references: [id], onDelete: SetNull)
+  address       CustomerAddress?
+  orders        Order[]
+  notifications NotificationLog[]
 
   @@index([status])
 }
 
 model CustomerAddress {
-  id          String    @id @default(cuid())
-  customerId  String    @unique
-  zipCode     String
-  state       String
-  city        String
-  district    String
-  street      String
-  number      String
-  complement  String?
-  reference   String?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id         String   @id @default(cuid())
+  customerId String   @unique
+  zipCode    String
+  state      String
+  city       String
+  district   String
+  street     String
+  number     String
+  complement String?
+  reference  String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
-  customer    Customer  @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
 }
 
 model Category {
-  id               String     @id @default(cuid())
-  name             String
-  slug             String     @unique
-  parentId         String?
-  createdAt        DateTime   @default(now())
-  updatedAt        DateTime   @updatedAt
+  id                String     @id @default(cuid())
+  name              String
+  slug              String     @unique
+  parentId          String?
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
 
-  parent           Category?  @relation("CategoryTree", fields: [parentId], references: [id], onDelete: SetNull)
-  children         Category[] @relation("CategoryTree")
-  primaryProducts  Product[]  @relation("ProductPrimaryCategory")
-  secondaryProducts Product[] @relation("ProductSecondaryCategory")
+  parent            Category?  @relation("CategoryTree", fields: [parentId], references: [id], onDelete: SetNull)
+  children          Category[] @relation("CategoryTree")
+  primaryProducts   Product[]  @relation("ProductPrimaryCategory")
+  secondaryProducts Product[]  @relation("ProductSecondaryCategory")
 }
 
 model Product {
-  id                  String         @id @default(cuid())
-  sku                 String         @unique
+  id                  String        @id @default(cuid())
+  sku                 String        @unique
   barcode             String?
   externalId          String?
   name                String
-  slug                String         @unique
+  slug                String        @unique
   shortDescription    String?
   fullDescription     String?
   unit                String?
@@ -210,20 +212,20 @@ model Product {
   retailPriceCents    Int
   wholesalePriceCents Int?
   minWholesaleQty     Int?
-  isActive            Boolean        @default(true)
-  status              ProductStatus  @default(ACTIVE)
-  stockCurrent        Int            @default(0)
-  stockMin            Int            @default(0)
+  isActive            Boolean       @default(true)
+  status              ProductStatus @default(ACTIVE)
+  stockCurrent        Int           @default(0)
+  stockMin            Int           @default(0)
   categoryId          String?
   subcategoryId       String?
-  createdAt           DateTime       @default(now())
-  updatedAt           DateTime       @updatedAt
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
 
-  category            Category?      @relation("ProductPrimaryCategory", fields: [categoryId], references: [id], onDelete: SetNull)
-  subcategory         Category?      @relation("ProductSecondaryCategory", fields: [subcategoryId], references: [id], onDelete: SetNull)
-  images              ProductImage[]
-  orderItems          OrderItem[]
-  stockMovements      StockMovement[]
+  category       Category?        @relation("ProductPrimaryCategory", fields: [categoryId], references: [id], onDelete: SetNull)
+  subcategory    Category?        @relation("ProductSecondaryCategory", fields: [subcategoryId], references: [id], onDelete: SetNull)
+  images         ProductImage[]
+  orderItems     OrderItem[]
+  stockMovements StockMovement[]
 
   @@index([name])
   @@index([categoryId])
@@ -231,62 +233,62 @@ model Product {
 }
 
 model ProductImage {
-  id          String    @id @default(cuid())
-  productId   String
-  url         String
-  alt         String?
-  sortOrder   Int       @default(0)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id        String   @id @default(cuid())
+  productId String
+  url       String
+  alt       String?
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  product     Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 
   @@index([productId, sortOrder])
 }
 
 model StoreWindow {
-  id          String            @id @default(cuid())
-  startsAt    DateTime
-  endsAt      DateTime
-  status      StoreWindowStatus @default(SCHEDULED)
-  message     String?
-  createdAt   DateTime          @default(now())
-  updatedAt   DateTime          @updatedAt
+  id        String            @id @default(cuid())
+  startsAt  DateTime
+  endsAt    DateTime
+  status    StoreWindowStatus @default(SCHEDULED)
+  message   String?
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
 
-  orders      Order[]
+  orders Order[]
 
   @@index([startsAt, endsAt])
 }
 
 model Order {
-  id                    String      @id @default(cuid())
-  code                  String      @unique
-  source                OrderSource @default(ONLINE)
-  customerId            String?
-  createdByUserId       String?
-  storeWindowId         String?
-  status                OrderStatus @default(AWAITING_PAYMENT)
-  subtotalCents         Int
-  discountCentsApplied  Int         @default(0)
-  totalDueCents         Int
-  additionalDueCents    Int         @default(0)
-  discountExpiresAt     DateTime?
-  discountExpiredAt     DateTime?
-  paidAt                DateTime?
-  cancelledAt           DateTime?
-  reservedAt            DateTime    @default(now())
-  notes                 String?
-  shippingAddressJson   Json?
-  createdAt             DateTime    @default(now())
-  updatedAt             DateTime    @updatedAt
+  id                   String      @id @default(cuid())
+  code                 String      @unique
+  source               OrderSource @default(ONLINE)
+  customerId           String?
+  createdByUserId      String?
+  storeWindowId        String?
+  status               OrderStatus @default(AWAITING_PAYMENT)
+  subtotalCents        Int
+  discountCentsApplied Int         @default(0)
+  totalDueCents        Int
+  additionalDueCents   Int         @default(0)
+  discountExpiresAt    DateTime?
+  discountExpiredAt    DateTime?
+  paidAt               DateTime?
+  cancelledAt          DateTime?
+  reservedAt           DateTime    @default(now())
+  notes                String?
+  shippingAddressJson  Json?
+  createdAt            DateTime    @default(now())
+  updatedAt            DateTime    @updatedAt
 
-  customer              Customer?   @relation(fields: [customerId], references: [id], onDelete: SetNull)
-  createdBy             User?       @relation("OrderCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
-  storeWindow           StoreWindow? @relation(fields: [storeWindowId], references: [id], onDelete: SetNull)
-  items                 OrderItem[]
-  payments              Payment[]
-  notifications         NotificationLog[]
-  stockMovements        StockMovement[]
+  customer       Customer?         @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  createdBy      User?             @relation("OrderCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  storeWindow    StoreWindow?      @relation(fields: [storeWindowId], references: [id], onDelete: SetNull)
+  items          OrderItem[]
+  payments       Payment[]
+  notifications  NotificationLog[]
+  stockMovements StockMovement[]
 
   @@index([customerId])
   @@index([status])
@@ -295,7 +297,7 @@ model Order {
 }
 
 model OrderItem {
-  id               String    @id @default(cuid())
+  id               String   @id @default(cuid())
   orderId          String
   productId        String?
   sku              String
@@ -304,11 +306,11 @@ model OrderItem {
   quantity         Int
   unitPriceCents   Int
   lineTotalCents   Int
-  wholesaleApplied Boolean   @default(false)
-  createdAt        DateTime  @default(now())
+  wholesaleApplied Boolean  @default(false)
+  createdAt        DateTime @default(now())
 
-  order            Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  product          Product?  @relation(fields: [productId], references: [id], onDelete: SetNull)
+  order   Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
 
   @@index([orderId])
   @@index([productId])
@@ -328,8 +330,8 @@ model Payment {
   createdAt           DateTime      @default(now())
   updatedAt           DateTime      @updatedAt
 
-  order               Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  confirmedBy         User?         @relation("PaymentConfirmedBy", fields: [confirmedByUserId], references: [id], onDelete: SetNull)
+  order       Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  confirmedBy User? @relation("PaymentConfirmedBy", fields: [confirmedByUserId], references: [id], onDelete: SetNull)
 
   @@index([orderId])
   @@index([status])
@@ -348,9 +350,9 @@ model StockMovement {
   metadata      Json?
   createdAt     DateTime          @default(now())
 
-  product       Product           @relation(fields: [productId], references: [id], onDelete: Cascade)
-  order         Order?            @relation(fields: [orderId], references: [id], onDelete: SetNull)
-  user          User?             @relation(fields: [userId], references: [id], onDelete: SetNull)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  order   Order?  @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  user    User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@index([productId])
   @@index([orderId])
@@ -359,17 +361,17 @@ model StockMovement {
 }
 
 model AuditLog {
-  id         String    @id @default(cuid())
-  userId     String?
-  action     String
-  entity     String
-  entityId   String
-  payload    Json?
-  ip         String?
-  userAgent  String?
-  createdAt  DateTime  @default(now())
+  id        String   @id @default(cuid())
+  userId    String?
+  action    String
+  entity    String
+  entityId  String
+  payload   Json?
+  ip        String?
+  userAgent String?
+  createdAt DateTime @default(now())
 
-  user       User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@index([entity, entityId])
   @@index([createdAt])
@@ -390,8 +392,8 @@ model NotificationLog {
   createdAt    DateTime           @default(now())
   updatedAt    DateTime           @updatedAt
 
-  order        Order?             @relation(fields: [orderId], references: [id], onDelete: SetNull)
-  customer     Customer?          @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  order    Order?    @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  customer Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
 
   @@index([channel, status])
   @@index([createdAt])

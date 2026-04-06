@@ -1,7 +1,22 @@
 import { z } from "zod";
 
+function emptyStringToUndefined(value: unknown) {
+  if (typeof value === "string" && value.trim() === "") {
+    return undefined;
+  }
+
+  return value;
+}
+
+function optionalEnv<T extends z.ZodTypeAny>(schema: T) {
+  return z.preprocess(emptyStringToUndefined, schema.optional());
+}
+
 const envSchema = z.object({
-  NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
+  NODE_ENV: z
+    .enum(["development", "test", "production"])
+    .default("development"),
+
   APP_BASE_URL: z.string().url(),
 
   DATABASE_URL: z.string().min(1),
@@ -12,25 +27,26 @@ const envSchema = z.object({
   NEXT_PUBLIC_STORE_NAME: z.string().min(1),
   NEXT_PUBLIC_WHATSAPP_PHONE: z.string().min(10),
 
-  PIX_KEY: z.string().min(1),
-  PIX_QR_CODE_URL: z.string().url().optional().or(z.literal("")),
-
-  R2_ACCOUNT_ID: z.string().min(1),
-  R2_ACCESS_KEY_ID: z.string().min(1),
-  R2_SECRET_ACCESS_KEY: z.string().min(1),
-  R2_BUCKET: z.string().min(1),
-  R2_REGION: z.string().min(1),
-  R2_ENDPOINT: z.string().url(),
-  R2_PUBLIC_BASE_URL: z.string().url(),
-
-  RESEND_API_KEY: z.string().min(1),
-  EMAIL_FROM: z.string().min(1),
-
   PRODUCTS_IMPORT_PATH: z.string().min(1),
+
+  PIX_KEY: optionalEnv(z.string().min(1)),
+  PIX_QR_CODE_URL: optionalEnv(z.string().url()),
+
+  R2_ACCOUNT_ID: optionalEnv(z.string().min(1)),
+  R2_ACCESS_KEY_ID: optionalEnv(z.string().min(1)),
+  R2_SECRET_ACCESS_KEY: optionalEnv(z.string().min(1)),
+  R2_BUCKET: optionalEnv(z.string().min(1)),
+  R2_REGION: optionalEnv(z.string().min(1)),
+  R2_ENDPOINT: optionalEnv(z.string().url()),
+  R2_PUBLIC_BASE_URL: optionalEnv(z.string().url()),
+
+  RESEND_API_KEY: optionalEnv(z.string().min(1)),
+  EMAIL_FROM: optionalEnv(z.string().min(1)),
 });
 
 export const env = envSchema.parse({
   NODE_ENV: process.env.NODE_ENV,
+
   APP_BASE_URL: process.env.APP_BASE_URL,
 
   DATABASE_URL: process.env.DATABASE_URL,
@@ -40,6 +56,8 @@ export const env = envSchema.parse({
 
   NEXT_PUBLIC_STORE_NAME: process.env.NEXT_PUBLIC_STORE_NAME,
   NEXT_PUBLIC_WHATSAPP_PHONE: process.env.NEXT_PUBLIC_WHATSAPP_PHONE,
+
+  PRODUCTS_IMPORT_PATH: process.env.PRODUCTS_IMPORT_PATH,
 
   PIX_KEY: process.env.PIX_KEY,
   PIX_QR_CODE_URL: process.env.PIX_QR_CODE_URL,
@@ -54,6 +72,6 @@ export const env = envSchema.parse({
 
   RESEND_API_KEY: process.env.RESEND_API_KEY,
   EMAIL_FROM: process.env.EMAIL_FROM,
-
-  PRODUCTS_IMPORT_PATH: process.env.PRODUCTS_IMPORT_PATH,
 });
+
+export type Env = z.infer<typeof envSchema>;
