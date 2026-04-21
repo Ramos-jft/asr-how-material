@@ -3,7 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { ProductStatus } from "@prisma/client";
 import { notFound } from "next/navigation";
-
+import { addToCartAction } from "@/app/carrinho/actions";
 import { formatCurrencyFromCents, formatInteger } from "@/lib/formatters";
 import { prisma } from "@/lib/prisma";
 
@@ -186,11 +186,35 @@ export default async function ProductDetailPage({
             </div>
           ) : null}
 
-          <div className="rounded-3xl border border-blue-100 bg-blue-50 p-5 text-sm leading-6 text-blue-950">
-            O botão de compra será liberado na etapa de carrinho, checkout,
-            aprovação de cliente e validação da janela de vendas. Por enquanto,
-            esta página é uma vitrine consultiva segura.
-          </div>
+          {hasStock ? (
+            <form
+              action={addToCartAction}
+              className="rounded-3xl border border-blue-100 bg-blue-50 p-5"
+            >
+              <input type="hidden" name="productId" value={product.id} />
+
+              <label className="space-y-2">
+                <span className="field-label">Quantidade</span>
+
+                <input
+                  className="field-input"
+                  type="number"
+                  name="quantity"
+                  min={1}
+                  max={product.stockCurrent}
+                  defaultValue={1}
+                />
+              </label>
+
+              <button className="button-primary mt-4 w-full" type="submit">
+                Adicionar ao carrinho
+              </button>
+            </form>
+          ) : (
+            <div className="rounded-3xl border border-amber-200 bg-amber-50 p-5 text-sm leading-6 text-amber-900">
+              Produto esgotado no momento.
+            </div>
+          )}
         </aside>
       </section>
     </main>

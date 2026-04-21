@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { ProductStatus, type Prisma } from "@prisma/client";
-
+import { addToCartAction } from "@/app/carrinho/actions";
 import { formatCurrencyFromCents } from "@/lib/formatters";
 import { prisma } from "@/lib/prisma";
 
@@ -315,13 +315,30 @@ export default async function CatalogPage({
                         </p>
                       </div>
 
-                      <Link
-                        className="button-secondary"
-                        href={`/produto/${product.slug}`}
-                        aria-label={`Ver detalhes de ${product.name}`}
-                      >
-                        Ver detalhes
-                      </Link>
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <Link
+                          className="button-secondary"
+                          href={`/produto/${product.slug}`}
+                          aria-label={`Ver detalhes de ${product.name}`}
+                        >
+                          Ver detalhes
+                        </Link>
+
+                        {hasStock ? (
+                          <form action={addToCartAction}>
+                            <input
+                              type="hidden"
+                              name="productId"
+                              value={product.id}
+                            />
+                            <input type="hidden" name="quantity" value="1" />
+
+                            <button className="button-primary" type="submit">
+                              Adicionar
+                            </button>
+                          </form>
+                        ) : null}
+                      </div>
                     </div>
                   </div>
                 </article>

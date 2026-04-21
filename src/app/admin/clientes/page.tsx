@@ -63,48 +63,15 @@ function getCustomerActionButtonClassName(
 }
 
 function canApproveCustomer(status: CustomerStatus): boolean {
-  switch (status) {
-    case CustomerStatus.PENDING:
-    case CustomerStatus.TEMPORARY:
-    case CustomerStatus.BLOCKED:
-      return true;
-
-    case CustomerStatus.APPROVED:
-      return false;
-
-    default:
-      return false;
-  }
+  return status !== CustomerStatus.APPROVED;
 }
 
 function canMakeCustomerTemporary(status: CustomerStatus): boolean {
-  switch (status) {
-    case CustomerStatus.PENDING:
-    case CustomerStatus.APPROVED:
-    case CustomerStatus.BLOCKED:
-      return true;
-
-    case CustomerStatus.TEMPORARY:
-      return false;
-
-    default:
-      return false;
-  }
+  return status !== CustomerStatus.TEMPORARY;
 }
 
 function canBlockCustomer(status: CustomerStatus): boolean {
-  switch (status) {
-    case CustomerStatus.PENDING:
-    case CustomerStatus.TEMPORARY:
-    case CustomerStatus.APPROVED:
-      return true;
-
-    case CustomerStatus.BLOCKED:
-      return false;
-
-    default:
-      return false;
-  }
+  return status !== CustomerStatus.BLOCKED;
 }
 
 function CustomerStatusBadge({ status }: Readonly<{ status: CustomerStatus }>) {
