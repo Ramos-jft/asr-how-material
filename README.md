@@ -1,36 +1,89 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# ASR HOW Material
 
-## Getting Started
+Aplicação web para a operação de materiais da **ASR HOW Brasil**, construída com **Next.js App Router**, **TypeScript**, **React**, **Tailwind CSS v4**, **Prisma** e **PostgreSQL**.
 
-First, run the development server:
+## Escopo do projeto
+
+O projeto atende ao briefing de uma loja restrita com:
+
+- autenticação e RBAC;
+- painel administrativo;
+- catálogo de produtos;
+- importação inicial da planilha de produtos;
+- base para controle de estoque;
+- base para pedidos, PIX manual, PDV, relatórios e janela de vendas.
+
+## Requisitos locais
+
+- Node.js 22.x
+- npm
+- Docker Desktop
+
+## Como rodar
+
+```bash
+npm install
+cp .env.example .env
+npm run db:up
+npm run db:migrate
+npm run db:seed
+npm run db:import:products
+npm run dev
+```
+
+Acesse:
+
+```txt
+http://localhost:3000
+```
+
+## Usuário inicial
+
+```txt
+E-mail: admin@materialasr.local
+Senha: Admin@123456
+```
+
+Troque esta senha antes de qualquer homologação externa.
+
+## Scripts úteis
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm run build
+npm run lint
+npm run typecheck
+npm run db:studio
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Estrutura principal
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```txt
+src/app          Rotas e páginas do Next.js
+src/lib          Utilitários, autenticação, Prisma e formatadores
+prisma           Schema, migrations e seed
+scripts          Scripts operacionais, incluindo importação de produtos
+data/import      Planilha inicial de produtos
+public/brand     Logos do projeto
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Fluxo já implementado
 
-## Learn More
+1. Página inicial institucional.
+2. Login com senha criptografada.
+3. Sessão via JWT em cookie httpOnly.
+4. Proteção do painel administrativo por permissão.
+5. Dashboard inicial com métricas do banco.
+6. Catálogo público com busca, filtro por categoria e paginação.
+7. Página de detalhe do produto.
+8. Importação da planilha `data/import/ProdutosASRHow.xlsx`.
 
-To learn more about Next.js, take a look at the following resources:
+## Próximas etapas
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+1. Cadastro e aprovação de clientes.
+2. Carrinho e checkout com pedido mínimo de R$ 300,00.
+3. Reserva de estoque ao finalizar pedido.
+4. PIX manual com confirmação pelo admin.
+5. PDV para eventos.
+6. Relatórios e exportações.
+7. Janela configurável de vendas.

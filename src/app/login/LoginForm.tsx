@@ -45,12 +45,22 @@ export function LoginForm() {
       </div>
 
       {state.error ? (
-        <p className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+        <p
+          id="login-error"
+          role="alert"
+          aria-live="polite"
+          className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+        >
           {state.error}
         </p>
       ) : null}
 
-      <button type="submit" className="button-primary w-full" disabled={isPending}>
+      <button
+        type="submit"
+        className="button-primary w-full"
+        disabled={isPending}
+        aria-describedby={state.error ? "login-error" : undefined}
+      >
         {isPending ? "Entrando..." : "Entrar no painel"}
       </button>
     </form>

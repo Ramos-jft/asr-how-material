@@ -45,7 +45,10 @@ export default function HomePage() {
           </div>
 
           <div className="flex flex-wrap gap-3">
-            <Link href="/login" className="button-primary">
+            <Link href="/catalogo" className="button-primary">
+              Ver catálogo
+            </Link>
+            <Link href="/login" className="button-secondary">
               Entrar no painel
             </Link>
             <Link href="/admin" className="button-secondary">

@@ -58,7 +58,7 @@ export async function loginAction(
     },
   });
 
-  if (!user) {
+  if (!user || user.status !== "ACTIVE") {
     return { error: "Usuário ou senha inválidos." };
   }
 
@@ -71,10 +71,19 @@ export async function loginAction(
     return { error: "Usuário ou senha inválidos." };
   }
 
-  const roles = user.roles.map((item) => item.role.name);
-  const permissions = user.roles.flatMap((item) =>
-    item.role.permissions.map((permission) => permission.permission.name),
+  const roles = Array.from(new Set(user.roles.map((item) => item.role.name)));
+  const permissions = Array.from(
+    new Set(
+      user.roles.flatMap((item) =>
+        item.role.permissions.map((permission) => permission.permission.name),
+      ),
+    ),
   );
+
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { lastLoginAt: new Date() },
+  });
 
   await createSession({
     userId: user.id,
