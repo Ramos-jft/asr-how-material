@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-function emptyStringToUndefined(value: unknown) {
+function emptyStringToUndefined(value: unknown): unknown {
   if (typeof value === "string" && value.trim() === "") {
     return undefined;
   }
@@ -8,16 +8,35 @@ function emptyStringToUndefined(value: unknown) {
   return value;
 }
 
-function optionalEnv<T extends z.ZodTypeAny>(schema: T) {
+function isValidUrl(value: string): boolean {
+  try {
+    new URL(value);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function optionalEnv<TSchema extends z.ZodTypeAny>(schema: TSchema) {
   return z.preprocess(emptyStringToUndefined, schema.optional());
 }
 
-const envSchema = z.object({
-  NODE_ENV: z
-    .enum(["development", "test", "production"])
-    .default("development"),
+const requiredUrl = z
+  .string()
+  .trim()
+  .min(1, "URL obrigatória.")
+  .refine(isValidUrl, "Informe uma URL válida.");
 
-  APP_BASE_URL: z.string().url(),
+const optionalUrl = z
+  .string()
+  .trim()
+  .min(1, "URL obrigatória.")
+  .refine(isValidUrl, "Informe uma URL válida.");
+
+const envSchema = z.object({
+  NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
+
+  APP_BASE_URL: requiredUrl,
 
   DATABASE_URL: z.string().min(1),
   DIRECT_URL: z.string().min(1),
@@ -30,15 +49,15 @@ const envSchema = z.object({
   PRODUCTS_IMPORT_PATH: z.string().min(1),
 
   PIX_KEY: optionalEnv(z.string().min(1)),
-  PIX_QR_CODE_URL: optionalEnv(z.string().url()),
+  PIX_QR_CODE_URL: optionalEnv(optionalUrl),
 
   R2_ACCOUNT_ID: optionalEnv(z.string().min(1)),
   R2_ACCESS_KEY_ID: optionalEnv(z.string().min(1)),
   R2_SECRET_ACCESS_KEY: optionalEnv(z.string().min(1)),
   R2_BUCKET: optionalEnv(z.string().min(1)),
   R2_REGION: optionalEnv(z.string().min(1)),
-  R2_ENDPOINT: optionalEnv(z.string().url()),
-  R2_PUBLIC_BASE_URL: optionalEnv(z.string().url()),
+  R2_ENDPOINT: optionalEnv(optionalUrl),
+  R2_PUBLIC_BASE_URL: optionalEnv(optionalUrl),
 
   RESEND_API_KEY: optionalEnv(z.string().min(1)),
   EMAIL_FROM: optionalEnv(z.string().min(1)),
