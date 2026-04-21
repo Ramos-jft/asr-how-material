@@ -3,11 +3,11 @@
 import { useActionState } from "react";
 
 import {
-  registerCustomerAction,
-  type CustomerRegistrationState,
+  createCustomerRegistrationAction,
+  type CadastroFormState,
 } from "@/app/cadastro/actions";
 
-const initialState: CustomerRegistrationState = {};
+const initialState: CadastroFormState = {};
 
 type FieldErrorProps = {
   message?: string;
@@ -16,213 +16,237 @@ type FieldErrorProps = {
 function FieldError({ message }: Readonly<FieldErrorProps>) {
   if (!message) return null;
 
-  return <p className="mt-1 text-sm text-red-700">{message}</p>;
+  return <p className="text-sm text-red-700">{message}</p>;
 }
 
 export function CadastroForm() {
   const [state, formAction, isPending] = useActionState(
-    registerCustomerAction,
+    createCustomerRegistrationAction,
     initialState,
   );
 
+  if (state.success) {
+    return (
+      <div className="panel panel-tight space-y-5">
+        <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+          {state.message}
+        </div>
+
+        <a className="button-primary w-full" href="/catalogo">
+          Ver catálogo
+        </a>
+      </div>
+    );
+  }
+
   return (
-    <form action={formAction} className="mt-8 space-y-8">
-      {state.success ? (
-        <div className="rounded-2xl border border-green-200 bg-green-50 p-4 text-sm text-green-800">
-          {state.success}
-        </div>
+    <form action={formAction} className="panel panel-tight space-y-6">
+      {state.message ? (
+        <p
+          role="alert"
+          aria-live="polite"
+          className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+        >
+          {state.message}
+        </p>
       ) : null}
 
-      {state.error ? (
-        <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
-          {state.error}
+      <section className="space-y-4">
+        <div>
+          <h2 className="text-lg font-semibold text-slate-950">
+            Dados do responsável
+          </h2>
+          <p className="mt-1 text-sm text-slate-600">
+            Informe os dados usados para aprovação do cadastro.
+          </p>
         </div>
-      ) : null}
 
-      <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-        <h2 className="text-xl font-semibold text-slate-950">
-          Dados do responsável
-        </h2>
-
-        <div className="mt-6 grid gap-5 md:grid-cols-2">
-          <label className="block">
-            <span className="text-sm font-medium text-slate-700">
+        <div className="grid gap-4 md:grid-cols-2">
+          <div className="space-y-2 md:col-span-2">
+            <label className="field-label" htmlFor="name">
               Nome completo
-            </span>
+            </label>
             <input
+              id="name"
               name="name"
-              required
+              className="field-input"
               autoComplete="name"
-              className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 text-slate-950 outline-none transition focus:border-blue-700 focus:ring-2 focus:ring-blue-100"
-            />
-            <FieldError message={state.fieldErrors?.name?.[0]} />
-          </label>
-
-          <label className="block">
-            <span className="text-sm font-medium text-slate-700">Nome CSA</span>
-            <input
-              name="csaName"
               required
-              className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 text-slate-950 outline-none transition focus:border-blue-700 focus:ring-2 focus:ring-blue-100"
             />
-            <FieldError message={state.fieldErrors?.csaName?.[0]} />
-          </label>
+            <FieldError message={state.fieldErrors?.name} />
+          </div>
 
-          <label className="block">
-            <span className="text-sm font-medium text-slate-700">Encargo</span>
-            <input
-              name="charge"
-              required
-              className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 text-slate-950 outline-none transition focus:border-blue-700 focus:ring-2 focus:ring-blue-100"
-            />
-            <FieldError message={state.fieldErrors?.charge?.[0]} />
-          </label>
+          <div className="space-y-2">
+            <label className="field-label" htmlFor="csaName">
+              Nome CSA
+            </label>
+            <input id="csaName" name="csaName" className="field-input" />
+            <FieldError message={state.fieldErrors?.csaName} />
+          </div>
 
-          <label className="block">
-            <span className="text-sm font-medium text-slate-700">
-              Grupo/unidade/identificador
-            </span>
-            <input
-              name="groupCode"
-              required
-              className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 text-slate-950 outline-none transition focus:border-blue-700 focus:ring-2 focus:ring-blue-100"
-            />
-            <FieldError message={state.fieldErrors?.groupCode?.[0]} />
-          </label>
+          <div className="space-y-2">
+            <label className="field-label" htmlFor="charge">
+              Encargo
+            </label>
+            <input id="charge" name="charge" className="field-input" />
+            <FieldError message={state.fieldErrors?.charge} />
+          </div>
 
-          <label className="block">
-            <span className="text-sm font-medium text-slate-700">WhatsApp</span>
+          <div className="space-y-2">
+            <label className="field-label" htmlFor="phone">
+              Telefone / WhatsApp
+            </label>
             <input
+              id="phone"
               name="phone"
-              required
+              className="field-input"
+              inputMode="tel"
               autoComplete="tel"
-              className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 text-slate-950 outline-none transition focus:border-blue-700 focus:ring-2 focus:ring-blue-100"
+              placeholder="(19) 99999-9999"
+              required
             />
-            <FieldError message={state.fieldErrors?.phone?.[0]} />
-          </label>
+            <FieldError message={state.fieldErrors?.phone} />
+          </div>
 
-          <label className="block">
-            <span className="text-sm font-medium text-slate-700">E-mail</span>
+          <div className="space-y-2">
+            <label className="field-label" htmlFor="email">
+              E-mail
+            </label>
             <input
+              id="email"
               name="email"
               type="email"
-              required
+              className="field-input"
               autoComplete="email"
-              className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 text-slate-950 outline-none transition focus:border-blue-700 focus:ring-2 focus:ring-blue-100"
+              required
             />
-            <FieldError message={state.fieldErrors?.email?.[0]} />
-          </label>
+            <FieldError message={state.fieldErrors?.email} />
+          </div>
+
+          <div className="space-y-2 md:col-span-2">
+            <label className="field-label" htmlFor="groupCode">
+              Grupo / unidade / identificador interno
+            </label>
+            <input
+              id="groupCode"
+              name="groupCode"
+              className="field-input"
+              required
+            />
+            <FieldError message={state.fieldErrors?.groupCode} />
+          </div>
         </div>
       </section>
 
-      <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-        <h2 className="text-xl font-semibold text-slate-950">
-          Endereço completo
-        </h2>
+      <section className="space-y-4">
+        <div>
+          <h2 className="text-lg font-semibold text-slate-950">
+            Endereço de entrega
+          </h2>
+          <p className="mt-1 text-sm text-slate-600">
+            O endereço será usado no checkout e na separação do pedido.
+          </p>
+        </div>
 
-        <div className="mt-6 grid gap-5 md:grid-cols-2">
-          <label className="block">
-            <span className="text-sm font-medium text-slate-700">CEP</span>
+        <div className="grid gap-4 md:grid-cols-2">
+          <div className="space-y-2">
+            <label className="field-label" htmlFor="zipCode">
+              CEP
+            </label>
             <input
+              id="zipCode"
               name="zipCode"
-              required
+              className="field-input"
+              inputMode="numeric"
               autoComplete="postal-code"
-              className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 text-slate-950 outline-none transition focus:border-blue-700 focus:ring-2 focus:ring-blue-100"
+              required
             />
-            <FieldError message={state.fieldErrors?.zipCode?.[0]} />
-          </label>
+            <FieldError message={state.fieldErrors?.zipCode} />
+          </div>
 
-          <label className="block">
-            <span className="text-sm font-medium text-slate-700">Estado</span>
+          <div className="space-y-2">
+            <label className="field-label" htmlFor="state">
+              UF
+            </label>
             <input
+              id="state"
               name="state"
-              required
+              className="field-input"
               maxLength={2}
-              className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 text-slate-950 uppercase outline-none transition focus:border-blue-700 focus:ring-2 focus:ring-blue-100"
-            />
-            <FieldError message={state.fieldErrors?.state?.[0]} />
-          </label>
-
-          <label className="block">
-            <span className="text-sm font-medium text-slate-700">Cidade</span>
-            <input
-              name="city"
+              placeholder="SP"
               required
-              className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 text-slate-950 outline-none transition focus:border-blue-700 focus:ring-2 focus:ring-blue-100"
             />
-            <FieldError message={state.fieldErrors?.city?.[0]} />
-          </label>
+            <FieldError message={state.fieldErrors?.state} />
+          </div>
 
-          <label className="block">
-            <span className="text-sm font-medium text-slate-700">Bairro</span>
+          <div className="space-y-2">
+            <label className="field-label" htmlFor="city">
+              Cidade
+            </label>
+            <input id="city" name="city" className="field-input" required />
+            <FieldError message={state.fieldErrors?.city} />
+          </div>
+
+          <div className="space-y-2">
+            <label className="field-label" htmlFor="district">
+              Bairro
+            </label>
             <input
+              id="district"
               name="district"
+              className="field-input"
               required
-              className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 text-slate-950 outline-none transition focus:border-blue-700 focus:ring-2 focus:ring-blue-100"
             />
-            <FieldError message={state.fieldErrors?.district?.[0]} />
-          </label>
+            <FieldError message={state.fieldErrors?.district} />
+          </div>
 
-          <label className="block md:col-span-2">
-            <span className="text-sm font-medium text-slate-700">
-              Rua / endereço
-            </span>
+          <div className="space-y-2 md:col-span-2">
+            <label className="field-label" htmlFor="street">
+              Endereço
+            </label>
             <input
+              id="street"
               name="street"
-              required
+              className="field-input"
               autoComplete="street-address"
-              className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 text-slate-950 outline-none transition focus:border-blue-700 focus:ring-2 focus:ring-blue-100"
-            />
-            <FieldError message={state.fieldErrors?.street?.[0]} />
-          </label>
-
-          <label className="block">
-            <span className="text-sm font-medium text-slate-700">Número</span>
-            <input
-              name="number"
               required
-              className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 text-slate-950 outline-none transition focus:border-blue-700 focus:ring-2 focus:ring-blue-100"
             />
-            <FieldError message={state.fieldErrors?.number?.[0]} />
-          </label>
+            <FieldError message={state.fieldErrors?.street} />
+          </div>
 
-          <label className="block">
-            <span className="text-sm font-medium text-slate-700">
+          <div className="space-y-2">
+            <label className="field-label" htmlFor="number">
+              Número
+            </label>
+            <input id="number" name="number" className="field-input" required />
+            <FieldError message={state.fieldErrors?.number} />
+          </div>
+
+          <div className="space-y-2">
+            <label className="field-label" htmlFor="complement">
               Complemento
-            </span>
-            <input
-              name="complement"
-              className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 text-slate-950 outline-none transition focus:border-blue-700 focus:ring-2 focus:ring-blue-100"
-            />
-            <FieldError message={state.fieldErrors?.complement?.[0]} />
-          </label>
+            </label>
+            <input id="complement" name="complement" className="field-input" />
+            <FieldError message={state.fieldErrors?.complement} />
+          </div>
 
-          <label className="block md:col-span-2">
-            <span className="text-sm font-medium text-slate-700">
+          <div className="space-y-2 md:col-span-2">
+            <label className="field-label" htmlFor="reference">
               Referência
-            </span>
-            <input
-              name="reference"
-              className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 text-slate-950 outline-none transition focus:border-blue-700 focus:ring-2 focus:ring-blue-100"
-            />
-            <FieldError message={state.fieldErrors?.reference?.[0]} />
-          </label>
+            </label>
+            <input id="reference" name="reference" className="field-input" />
+            <FieldError message={state.fieldErrors?.reference} />
+          </div>
         </div>
       </section>
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-sm text-slate-600">
-          O cadastro ficará pendente até aprovação manual da administração.
-        </p>
-
-        <button
-          type="submit"
-          disabled={isPending}
-          className="rounded-full bg-blue-800 px-6 py-3 text-sm font-semibold text-white transition hover:bg-blue-900 disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          {isPending ? "Enviando..." : "Enviar cadastro"}
-        </button>
-      </div>
+      <button
+        type="submit"
+        className="button-primary w-full"
+        disabled={isPending}
+      >
+        {isPending ? "Enviando cadastro..." : "Enviar cadastro para aprovação"}
+      </button>
     </form>
   );
 }

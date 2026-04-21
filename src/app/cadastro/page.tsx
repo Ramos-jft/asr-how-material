@@ -4,40 +4,53 @@ import Link from "next/link";
 import { CadastroForm } from "@/app/cadastro/CadastroForm";
 
 export const metadata: Metadata = {
-  title: "Cadastro de cliente",
-  description:
-    "Cadastro público para solicitar acesso à loja Material ASR HOW Brasil.",
+  title: "Cadastro",
+  description: "Cadastro para acesso à loja de materiais da ASR HOW Brasil.",
 };
 
 export default function CadastroPage() {
   return (
-    <main className="min-h-screen bg-slate-50 px-6 py-10">
-      <div className="mx-auto max-w-5xl">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <p className="text-sm font-semibold uppercase tracking-[0.3em] text-blue-800">
-              Cadastro
-            </p>
-            <h1 className="mt-3 text-3xl font-bold tracking-tight text-slate-950 sm:text-4xl">
-              Solicitar acesso à loja
+    <main className="page-shell items-start">
+      <section className="grid w-full gap-8 lg:grid-cols-[0.85fr_1.15fr]">
+        <div className="panel h-fit space-y-6">
+          <span className="badge-brand">Cadastro</span>
+
+          <div className="space-y-3">
+            <h1 className="text-3xl font-semibold tracking-tight text-slate-950 md:text-5xl">
+              Solicite acesso à loja
             </h1>
-            <p className="mt-3 max-w-3xl text-base leading-7 text-slate-700">
-              Preencha os dados do responsável. A compra é restrita a clientes
-              aprovados manualmente ou liberados temporariamente para uma
+
+            <p className="text-base leading-7 text-slate-600">
+              A compra é restrita a clientes cadastrados e aprovados. Após o
+              envio, o administrador analisará o cadastro antes de liberar a
               compra.
             </p>
           </div>
 
-          <Link
-            href="/catalogo"
-            className="rounded-full border border-slate-300 px-5 py-3 text-sm font-semibold text-slate-800 transition hover:border-blue-800 hover:text-blue-800"
-          >
-            Ver catálogo
-          </Link>
+          <div className="space-y-3 rounded-3xl border border-slate-200 bg-slate-50 p-5 text-sm leading-6 text-slate-600">
+            <p>
+              <strong className="text-slate-950">Importante:</strong> o cadastro
+              não libera a compra automaticamente.
+            </p>
+            <p>
+              Clientes temporários podem ser autorizados manualmente para uma
+              compra, conforme regra operacional do projeto.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap gap-3">
+            <Link className="button-secondary" href="/catalogo">
+              Ver catálogo
+            </Link>
+
+            <Link className="button-secondary" href="/login">
+              Entrar no painel
+            </Link>
+          </div>
         </div>
 
         <CadastroForm />
-      </div>
+      </section>
     </main>
   );
 }

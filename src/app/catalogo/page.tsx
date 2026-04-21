@@ -22,39 +22,58 @@ type CatalogPageProps = {
   }>;
 };
 
-type CatalogCategory = {
-  id: string;
-  name: string;
-  slug: string;
-};
+const categorySelect = {
+  id: true,
+  name: true,
+  slug: true,
+} satisfies Prisma.CategorySelect;
 
-type CatalogProduct = {
-  id: string;
-  name: string;
-  slug: string;
-  shortDescription: string | null;
-  retailPriceCents: number;
-  stockCurrent: number;
-  status: ProductStatus;
+type CatalogCategory = Prisma.CategoryGetPayload<{
+  select: typeof categorySelect;
+}>;
+
+const productSelect = {
+  id: true,
+  name: true,
+  slug: true,
+  shortDescription: true,
+  retailPriceCents: true,
+  stockCurrent: true,
+  status: true,
   category: {
-    name: string;
-    slug: string;
-  } | null;
+    select: {
+      name: true,
+      slug: true,
+    },
+  },
   subcategory: {
-    name: string;
-    slug: string;
-  } | null;
+    select: {
+      name: true,
+      slug: true,
+    },
+  },
   images: {
-    url: string;
-    alt: string | null;
-    sortOrder: number;
-  }[];
-};
+    select: {
+      url: true,
+      alt: true,
+      sortOrder: true,
+    },
+    orderBy: {
+      sortOrder: "asc",
+    },
+    take: 1,
+  },
+} satisfies Prisma.ProductSelect;
+
+type CatalogProduct = Prisma.ProductGetPayload<{
+  select: typeof productSelect;
+}>;
 
 const PAGE_SIZE = 20;
 
 function normalizeSearchParam(value: string | undefined): string | undefined {
   const normalized = value?.trim();
+
   return normalized || undefined;
 }
 
@@ -116,11 +135,7 @@ export default async function CatalogPage({
       orderBy: {
         name: "asc",
       },
-      select: {
-        id: true,
-        name: true,
-        slug: true,
-      },
+      select: categorySelect,
     }),
     prisma.product.count({ where }),
     prisma.product.findMany({
@@ -130,33 +145,12 @@ export default async function CatalogPage({
       },
       skip: (currentPage - 1) * PAGE_SIZE,
       take: PAGE_SIZE,
-      include: {
-        category: {
-          select: {
-            name: true,
-            slug: true,
-          },
-        },
-        subcategory: {
-          select: {
-            name: true,
-            slug: true,
-          },
-        },
-        images: {
-          select: {
-            url: true,
-            alt: true,
-            sortOrder: true,
-          },
-          orderBy: {
-            sortOrder: "asc",
-          },
-          take: 1,
-        },
-      },
+      select: productSelect,
     }),
   ]);
+
+  const typedCategories: CatalogCategory[] = categories;
+  const typedProducts: CatalogProduct[] = products;
 
   const totalPages = Math.max(1, Math.ceil(totalProducts / PAGE_SIZE));
   const canGoBack = currentPage > 1;
@@ -169,9 +163,9 @@ export default async function CatalogPage({
     if (categorySlug) nextParams.set("categoria", categorySlug);
     if (page > 1) nextParams.set("page", String(page));
 
-    const qs = nextParams.toString();
+    const queryString = nextParams.toString();
 
-    return qs ? `/catalogo?${qs}` : "/catalogo";
+    return queryString ? `/catalogo?${queryString}` : "/catalogo";
   };
 
   return (
@@ -225,10 +219,10 @@ export default async function CatalogPage({
               className="field-input"
               id="categoria"
               name="categoria"
-              defaultValue={categorySlug}
+              defaultValue={categorySlug ?? ""}
             >
               <option value="">Todas</option>
-              {categories.map((category: CatalogCategory) => (
+              {typedCategories.map((category) => (
                 <option key={category.id} value={category.slug}>
                   {category.name}
                 </option>
@@ -261,13 +255,13 @@ export default async function CatalogPage({
           </p>
         </div>
 
-        {products.length === 0 ? (
+        {typedProducts.length === 0 ? (
           <div className="mini-card">
             Nenhum produto encontrado com os filtros atuais.
           </div>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {products.map((product: CatalogProduct) => {
+            {typedProducts.map((product) => {
               const image = product.images[0];
               const hasStock = product.stockCurrent > 0;
 
