@@ -4,6 +4,32 @@ import Link from "next/link";
 import { formatCurrencyFromCents } from "@/lib/formatters";
 import { prisma } from "@/lib/prisma";
 
+type CatalogCategory = {
+  id: string;
+  name: string;
+  slug: string;
+};
+
+type CatalogProduct = {
+  id: string;
+  name: string;
+  slug: string;
+  shortDescription: string | null;
+  retailPriceCents: number;
+  stockCurrent: number;
+  status: "ACTIVE" | "INACTIVE" | "OUT_OF_STOCK";
+  category: {
+    name: string;
+    slug: string;
+  } | null;
+  subcategory: {
+    name: string;
+    slug: string;
+  } | null;
+};
+
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   title: "Catálogo",
   description:
@@ -22,7 +48,7 @@ const PAGE_SIZE = 20;
 
 function normalizeSearchParam(value: string | undefined): string | undefined {
   const normalized = value?.trim();
-  return normalized ? normalized : undefined;
+  return normalized || undefined;
 }
 
 function getPage(value: string | undefined): number {
@@ -35,7 +61,7 @@ function getPage(value: string | undefined): number {
   return parsed;
 }
 
-export default async function CatalogPage({ searchParams }: CatalogPageProps) {
+export default async function CatalogPage({ searchParams }: Readonly<CatalogPageProps>) {
   const params = await searchParams;
   const query = normalizeSearchParam(params.q);
   const categorySlug = normalizeSearchParam(params.categoria);
@@ -137,7 +163,7 @@ export default async function CatalogPage({ searchParams }: CatalogPageProps) {
             <span className="field-label">Categoria</span>
             <select className="field-input" name="categoria" defaultValue={categorySlug ?? ""}>
               <option value="">Todas</option>
-              {categories.map((category) => (
+              {categories.map((category: CatalogCategory) => (
                 <option key={category.id} value={category.slug}>
                   {category.name}
                 </option>
@@ -173,7 +199,7 @@ export default async function CatalogPage({ searchParams }: CatalogPageProps) {
           </div>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            {products.map((product) => (
+            {products.map((product: CatalogProduct) => (
               <article key={product.id} className="panel panel-tight flex flex-col gap-4">
                 <div className="flex h-36 items-center justify-center rounded-3xl border border-slate-200 bg-slate-50 text-sm font-medium text-slate-400">
                   Sem imagem

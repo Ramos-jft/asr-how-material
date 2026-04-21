@@ -5,6 +5,8 @@ import { notFound } from "next/navigation";
 import { formatCurrencyFromCents, formatInteger } from "@/lib/formatters";
 import { prisma } from "@/lib/prisma";
 
+export const dynamic = "force-dynamic";
+
 type ProductDetailPageProps = {
   params: Promise<{
     slug: string;
@@ -48,7 +50,7 @@ export async function generateMetadata({
   };
 }
 
-export default async function ProductDetailPage({ params }: ProductDetailPageProps) {
+export default async function ProductDetailPage({ params }: Readonly<ProductDetailPageProps>) {
   const { slug } = await params;
   const product = await getProduct(slug);
 
