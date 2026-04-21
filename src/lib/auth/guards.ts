@@ -2,9 +2,9 @@ import "server-only";
 
 import { redirect } from "next/navigation";
 
-import { prisma } from "@/lib/prisma";
-import { getSession, clearSession } from "@/lib/auth/session";
+import { clearSession, getSession } from "@/lib/auth/session";
 import { hasPermission, type PermissionName } from "@/lib/auth/permissions";
+import { prisma } from "@/lib/prisma";
 
 export async function requireAuth() {
   const session = await getSession();
@@ -32,15 +32,22 @@ export async function requireAuth() {
     },
   });
 
-  if (!user) {
+  if (user?.status !== "ACTIVE") {
     await clearSession();
     redirect("/login");
   }
 
-  const permissions = user.roles.flatMap((userRole) =>
-    userRole.role.permissions.map((item) => item.permission.name),
+  const roles = Array.from(
+    new Set(user.roles.map((userRole) => userRole.role.name)),
   );
-  const roles = user.roles.map((userRole) => userRole.role.name);
+
+  const permissions = Array.from(
+    new Set(
+      user.roles.flatMap((userRole) =>
+        userRole.role.permissions.map((item) => item.permission.name),
+      ),
+    ),
+  );
 
   return {
     user,
