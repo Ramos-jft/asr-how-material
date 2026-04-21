@@ -1,32 +1,10 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
+import { ProductStatus, type Prisma } from "@prisma/client";
 
 import { formatCurrencyFromCents } from "@/lib/formatters";
 import { prisma } from "@/lib/prisma";
-
-type CatalogCategory = {
-  id: string;
-  name: string;
-  slug: string;
-};
-
-type CatalogProduct = {
-  id: string;
-  name: string;
-  slug: string;
-  shortDescription: string | null;
-  retailPriceCents: number;
-  stockCurrent: number;
-  status: "ACTIVE" | "INACTIVE" | "OUT_OF_STOCK";
-  category: {
-    name: string;
-    slug: string;
-  } | null;
-  subcategory: {
-    name: string;
-    slug: string;
-  } | null;
-};
 
 export const dynamic = "force-dynamic";
 
@@ -42,6 +20,35 @@ type CatalogPageProps = {
     categoria?: string;
     page?: string;
   }>;
+};
+
+type CatalogCategory = {
+  id: string;
+  name: string;
+  slug: string;
+};
+
+type CatalogProduct = {
+  id: string;
+  name: string;
+  slug: string;
+  shortDescription: string | null;
+  retailPriceCents: number;
+  stockCurrent: number;
+  status: ProductStatus;
+  category: {
+    name: string;
+    slug: string;
+  } | null;
+  subcategory: {
+    name: string;
+    slug: string;
+  } | null;
+  images: {
+    url: string;
+    alt: string | null;
+    sortOrder: number;
+  }[];
 };
 
 const PAGE_SIZE = 20;
@@ -61,30 +68,41 @@ function getPage(value: string | undefined): number {
   return parsed;
 }
 
-export default async function CatalogPage({ searchParams }: Readonly<CatalogPageProps>) {
+export default async function CatalogPage({
+  searchParams,
+}: Readonly<CatalogPageProps>) {
   const params = await searchParams;
+
   const query = normalizeSearchParam(params.q);
   const categorySlug = normalizeSearchParam(params.categoria);
   const currentPage = getPage(params.page);
 
-  const where = {
+  const where: Prisma.ProductWhereInput = {
     isActive: true,
     status: {
-      not: "INACTIVE" as const,
+      not: ProductStatus.INACTIVE,
     },
     ...(query
       ? {
           name: {
             contains: query,
-            mode: "insensitive" as const,
+            mode: "insensitive",
           },
         }
       : {}),
     ...(categorySlug
       ? {
           OR: [
-            { category: { slug: categorySlug } },
-            { subcategory: { slug: categorySlug } },
+            {
+              category: {
+                slug: categorySlug,
+              },
+            },
+            {
+              subcategory: {
+                slug: categorySlug,
+              },
+            },
           ],
         }
       : {}),
@@ -92,19 +110,50 @@ export default async function CatalogPage({ searchParams }: Readonly<CatalogPage
 
   const [categories, totalProducts, products] = await Promise.all([
     prisma.category.findMany({
-      where: { parentId: null },
-      orderBy: { name: "asc" },
-      select: { id: true, name: true, slug: true },
+      where: {
+        parentId: null,
+      },
+      orderBy: {
+        name: "asc",
+      },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+      },
     }),
     prisma.product.count({ where }),
     prisma.product.findMany({
       where,
-      orderBy: { name: "asc" },
+      orderBy: {
+        name: "asc",
+      },
       skip: (currentPage - 1) * PAGE_SIZE,
       take: PAGE_SIZE,
       include: {
-        category: { select: { name: true, slug: true } },
-        subcategory: { select: { name: true, slug: true } },
+        category: {
+          select: {
+            name: true,
+            slug: true,
+          },
+        },
+        subcategory: {
+          select: {
+            name: true,
+            slug: true,
+          },
+        },
+        images: {
+          select: {
+            url: true,
+            alt: true,
+            sortOrder: true,
+          },
+          orderBy: {
+            sortOrder: "asc",
+          },
+          take: 1,
+        },
       },
     }),
   ]);
@@ -121,47 +170,63 @@ export default async function CatalogPage({ searchParams }: Readonly<CatalogPage
     if (page > 1) nextParams.set("page", String(page));
 
     const qs = nextParams.toString();
+
     return qs ? `/catalogo?${qs}` : "/catalogo";
   };
 
   return (
-    <main className="mx-auto min-h-screen w-full max-w-7xl space-y-8 px-6 py-8">
-      <header className="panel space-y-4">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+    <main className="page-shell items-start">
+      <section className="panel w-full space-y-8">
+        <header className="space-y-4">
+          <span className="badge-brand">Catálogo</span>
+
           <div className="space-y-3">
-            <span className="badge-brand">Catálogo</span>
-            <div className="space-y-2">
-              <h1 className="text-3xl font-semibold tracking-tight text-slate-950 sm:text-4xl">
-                Materiais disponíveis
-              </h1>
-              <p className="max-w-3xl text-base leading-7 text-slate-600">
-                Consulte os produtos importados da planilha inicial. O checkout ainda
-                será bloqueado até a implementação do carrinho, aprovação de cliente e
-                janela de vendas.
-              </p>
-            </div>
+            <h1 className="max-w-3xl text-3xl font-semibold tracking-tight text-slate-950 md:text-5xl">
+              Materiais disponíveis
+            </h1>
+
+            <p className="max-w-3xl text-base leading-7 text-slate-600">
+              Consulte os produtos importados da planilha inicial. O checkout
+              será liberado após a implementação de carrinho, aprovação de
+              cliente e janela de vendas.
+            </p>
           </div>
 
-          <Link href="/login" className="button-secondary w-fit">
-            Entrar no painel
-          </Link>
-        </div>
+          <div className="flex flex-wrap gap-3">
+            <Link className="button-secondary" href="/">
+              Voltar ao início
+            </Link>
 
-        <form className="grid gap-3 md:grid-cols-[minmax(0,1fr)_260px_auto]">
-          <label className="space-y-2">
-            <span className="field-label">Buscar por nome</span>
+            <Link className="button-primary" href="/login">
+              Entrar no painel
+            </Link>
+          </div>
+        </header>
+
+        <form className="grid gap-4 rounded-3xl border border-slate-200 bg-slate-50 p-4 md:grid-cols-[1fr_260px_auto_auto]">
+          <div className="space-y-2">
+            <label className="field-label" htmlFor="q">
+              Buscar por nome
+            </label>
             <input
               className="field-input"
-              type="search"
+              id="q"
               name="q"
+              placeholder="Ex.: livro, ficha, medalhão..."
               defaultValue={query}
-              placeholder="Ex.: medalhão, folheto, livro"
             />
-          </label>
+          </div>
 
-          <label className="space-y-2">
-            <span className="field-label">Categoria</span>
-            <select className="field-input" name="categoria" defaultValue={categorySlug ?? ""}>
+          <div className="space-y-2">
+            <label className="field-label" htmlFor="categoria">
+              Categoria
+            </label>
+            <select
+              className="field-input"
+              id="categoria"
+              name="categoria"
+              defaultValue={categorySlug}
+            >
               <option value="">Todas</option>
               {categories.map((category: CatalogCategory) => (
                 <option key={category.id} value={category.slug}>
@@ -169,95 +234,133 @@ export default async function CatalogPage({ searchParams }: Readonly<CatalogPage
                 </option>
               ))}
             </select>
-          </label>
+          </div>
 
-          <div className="flex items-end gap-2">
-            <button type="submit" className="button-primary h-12">
+          <div className="flex items-end">
+            <button className="button-primary w-full" type="submit">
               Filtrar
             </button>
-            <Link href="/catalogo" className="button-secondary h-12">
+          </div>
+
+          <div className="flex items-end">
+            <Link className="button-secondary w-full" href="/catalogo">
               Limpar
             </Link>
           </div>
         </form>
-      </header>
 
-      <section className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <p className="text-sm text-slate-600">
-            {totalProducts} produto{totalProducts === 1 ? "" : "s"} encontrado
-            {totalProducts === 1 ? "" : "s"}
+            <strong className="text-slate-950">{totalProducts}</strong> produto
+            {totalProducts === 1 ? "" : "s"} encontrado
+            {totalProducts === 1 ? "" : "s"}.
           </p>
-          <p className="text-sm text-slate-500">
+
+          <p className="text-sm text-slate-600">
             Página {currentPage} de {totalPages}
           </p>
         </div>
 
         {products.length === 0 ? (
-          <div className="panel text-center text-slate-600">
+          <div className="mini-card">
             Nenhum produto encontrado com os filtros atuais.
           </div>
         ) : (
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            {products.map((product: CatalogProduct) => (
-              <article key={product.id} className="panel panel-tight flex flex-col gap-4">
-                <div className="flex h-36 items-center justify-center rounded-3xl border border-slate-200 bg-slate-50 text-sm font-medium text-slate-400">
-                  Sem imagem
-                </div>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {products.map((product: CatalogProduct) => {
+              const image = product.images[0];
+              const hasStock = product.stockCurrent > 0;
 
-                <div className="flex flex-1 flex-col gap-3">
-                  <div className="space-y-2">
-                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-sky-700">
-                      {product.category?.name ?? "Sem categoria"}
-                    </p>
-                    <h2 className="text-lg font-semibold leading-6 text-slate-950">
-                      <Link href={`/produto/${product.slug}`} className="hover:text-sky-700">
-                        {product.name}
-                      </Link>
-                    </h2>
+              return (
+                <article
+                  className="flex h-full flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm"
+                  key={product.id}
+                >
+                  <div className="relative aspect-[4/3] bg-slate-100">
+                    {image ? (
+                      <Image
+                        src={image.url}
+                        alt={image.alt ?? product.name}
+                        fill
+                        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                        className="object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-full items-center justify-center px-6 text-center text-sm font-medium text-slate-400">
+                        Sem imagem
+                      </div>
+                    )}
                   </div>
 
-                  {product.shortDescription ? (
-                    <p className="line-clamp-3 text-sm leading-6 text-slate-600">
-                      {product.shortDescription}
-                    </p>
-                  ) : null}
-
-                  <div className="mt-auto space-y-3 pt-2">
-                    <div className="flex items-center justify-between gap-3">
-                      <strong className="text-xl font-semibold text-slate-950">
-                        {formatCurrencyFromCents(product.retailPriceCents)}
-                      </strong>
+                  <div className="flex flex-1 flex-col gap-4 p-5">
+                    <div className="space-y-2">
                       <span className="badge-muted">
-                        {product.stockCurrent > 0 ? `${product.stockCurrent} un.` : "Esgotado"}
+                        {product.category?.name ?? "Sem categoria"}
                       </span>
+
+                      <h2 className="text-lg font-semibold leading-snug text-slate-950">
+                        {product.name}
+                      </h2>
+
+                      {product.shortDescription ? (
+                        <p className="line-clamp-3 text-sm leading-6 text-slate-600">
+                          {product.shortDescription}
+                        </p>
+                      ) : null}
                     </div>
-                    <Link href={`/produto/${product.slug}`} className="button-secondary w-full">
-                      Ver detalhes
-                    </Link>
+
+                    <div className="mt-auto flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-lg font-semibold text-slate-950">
+                          {formatCurrencyFromCents(product.retailPriceCents)}
+                        </p>
+                        <p className="text-sm text-slate-500">
+                          {hasStock
+                            ? `${product.stockCurrent} un.`
+                            : "Esgotado"}
+                        </p>
+                      </div>
+
+                      <Link
+                        className="button-secondary"
+                        href={`/produto/${product.slug}`}
+                        aria-label={`Ver detalhes de ${product.name}`}
+                      >
+                        Ver detalhes
+                      </Link>
+                    </div>
                   </div>
-                </div>
-              </article>
-            ))}
+                </article>
+              );
+            })}
           </div>
         )}
+
+        <nav
+          className="flex flex-wrap items-center justify-between gap-3"
+          aria-label="Paginação do catálogo"
+        >
+          {canGoBack ? (
+            <Link
+              className="button-secondary"
+              href={createPageHref(currentPage - 1)}
+            >
+              Página anterior
+            </Link>
+          ) : (
+            <span />
+          )}
+
+          {canGoForward ? (
+            <Link
+              className="button-secondary"
+              href={createPageHref(currentPage + 1)}
+            >
+              Próxima página
+            </Link>
+          ) : null}
+        </nav>
       </section>
-
-      <nav className="flex items-center justify-between gap-3" aria-label="Paginação do catálogo">
-        {canGoBack ? (
-          <Link href={createPageHref(currentPage - 1)} className="button-secondary">
-            Página anterior
-          </Link>
-        ) : (
-          <span />
-        )}
-
-        {canGoForward ? (
-          <Link href={createPageHref(currentPage + 1)} className="button-primary">
-            Próxima página
-          </Link>
-        ) : null}
-      </nav>
     </main>
   );
 }
