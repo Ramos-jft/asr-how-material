@@ -34,6 +34,10 @@ const adminLinks = [
     label: "Relatórios",
   },
   {
+    href: "/cadastro",
+    label: "Cadastro",
+  },
+  {
     href: "/catalogo",
     label: "Catálogo",
   },

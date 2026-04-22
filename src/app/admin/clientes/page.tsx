@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import type { ReactNode } from "react";
 import { CustomerStatus } from "@prisma/client";
 
@@ -130,13 +131,35 @@ export default async function AdminClientesPage() {
             Gerencie os cadastros recebidos, aprove clientes, libere uma compra
             temporária ou bloqueie acessos quando necessário.
           </p>
+          <div className="mt-4 flex flex-wrap gap-3">
+            <Link
+              href="/cadastro"
+              className="rounded-full bg-blue-800 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-900"
+            >
+              Abrir página de cadastro
+            </Link>
+
+            <Link
+              href="/catalogo"
+              className="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-blue-800 hover:text-blue-800"
+            >
+              Ver catálogo público
+            </Link>
+          </div>
         </div>
       </header>
 
       <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
         {customers.length === 0 ? (
-          <div className="p-6 text-sm text-slate-600">
-            Nenhum cliente cadastrado até o momento.
+          <div className="space-y-4 p-6 text-sm text-slate-600">
+            <p>Nenhum cliente cadastrado até o momento.</p>
+
+            <Link
+              href="/cadastro"
+              className="inline-flex rounded-full bg-blue-800 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-900"
+            >
+              Abrir formulário de cadastro
+            </Link>
           </div>
         ) : (
           <div className="overflow-x-auto">
