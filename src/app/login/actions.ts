@@ -4,6 +4,7 @@ import bcrypt from "bcryptjs";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
+import { getAuthenticatedRedirectPath } from "@/lib/auth/guards";
 import { createSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 
@@ -58,7 +59,7 @@ export async function loginAction(
     },
   });
 
-  if (!user || user.status !== "ACTIVE") {
+  if (user?.status !== "ACTIVE") {
     return { error: "Usuário ou senha inválidos." };
   }
 
@@ -91,5 +92,5 @@ export async function loginAction(
     permissions,
   });
 
-  redirect("/admin");
+  redirect(getAuthenticatedRedirectPath(permissions));
 }

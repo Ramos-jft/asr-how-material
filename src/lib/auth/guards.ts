@@ -3,8 +3,22 @@ import "server-only";
 import { redirect } from "next/navigation";
 
 import { clearSession, getSession } from "@/lib/auth/session";
-import { hasPermission, type PermissionName } from "@/lib/auth/permissions";
+import {
+  hasPermission,
+  PERMISSIONS,
+  type PermissionName,
+} from "@/lib/auth/permissions";
 import { prisma } from "@/lib/prisma";
+
+export function getAuthenticatedRedirectPath(
+  permissions: readonly string[],
+): string {
+  if (hasPermission(permissions, PERMISSIONS.DASHBOARD_READ)) {
+    return "/admin";
+  }
+
+  return "/catalogo";
+}
 
 export async function requireAuth() {
   const session = await getSession();
@@ -70,6 +84,6 @@ export async function requireGuest() {
   const session = await getSession();
 
   if (session?.sub) {
-    redirect("/admin");
+    redirect(getAuthenticatedRedirectPath(session.permissions));
   }
 }

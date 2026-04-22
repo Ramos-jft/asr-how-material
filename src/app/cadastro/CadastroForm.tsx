@@ -123,6 +123,36 @@ export function CadastroForm() {
             <FieldError message={state.fieldErrors?.email} />
           </div>
 
+          <div className="space-y-2">
+            <label className="field-label" htmlFor="password">
+              Senha
+            </label>
+            <input
+              id="password"
+              name="password"
+              type="password"
+              className="field-input"
+              autoComplete="new-password"
+              required
+            />
+            <FieldError message={state.fieldErrors?.password} />
+          </div>
+
+          <div className="space-y-2">
+            <label className="field-label" htmlFor="passwordConfirmation">
+              Confirmar senha
+            </label>
+            <input
+              id="passwordConfirmation"
+              name="passwordConfirmation"
+              type="password"
+              className="field-input"
+              autoComplete="new-password"
+              required
+            />
+            <FieldError message={state.fieldErrors?.passwordConfirmation} />
+          </div>
+
           <div className="space-y-2 md:col-span-2">
             <label className="field-label" htmlFor="groupCode">
               Grupo / unidade / identificador interno
