@@ -6,7 +6,21 @@ import { loginAction, type LoginFormState } from "@/app/login/actions";
 
 const initialState: LoginFormState = {};
 
-export function LoginForm() {
+type LoginFormProps = Readonly<{
+  title?: string;
+  description?: string;
+  submitLabel?: string;
+  pendingLabel?: string;
+  emailPlaceholder?: string;
+}>;
+
+export function LoginForm({
+  title = "Entrar no sistema",
+  description = "Informe seu e-mail e senha para continuar.",
+  submitLabel = "Entrar",
+  pendingLabel = "Entrando...",
+  emailPlaceholder = "email@exemplo.com",
+}: LoginFormProps) {
   const [state, formAction, isPending] = useActionState(
     loginAction,
     initialState,
@@ -15,16 +29,23 @@ export function LoginForm() {
   return (
     <form action={formAction} className="panel panel-tight space-y-5">
       <div className="space-y-2">
+        <h2 className="text-xl font-semibold text-slate-950">{title}</h2>
+
+        <p className="text-sm leading-6 text-slate-600">{description}</p>
+      </div>
+
+      <div className="space-y-2">
         <label className="field-label" htmlFor="email">
           E-mail
         </label>
+
         <input
           id="email"
           name="email"
           type="email"
           autoComplete="email"
           className="field-input"
-          placeholder="admin@materialasr.local"
+          placeholder={emailPlaceholder}
           required
         />
       </div>
@@ -33,6 +54,7 @@ export function LoginForm() {
         <label className="field-label" htmlFor="password">
           Senha
         </label>
+
         <input
           id="password"
           name="password"
@@ -61,7 +83,7 @@ export function LoginForm() {
         disabled={isPending}
         aria-describedby={state.error ? "login-error" : undefined}
       >
-        {isPending ? "Entrando..." : "Entrar no painel"}
+        {isPending ? pendingLabel : submitLabel}
       </button>
     </form>
   );

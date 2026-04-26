@@ -230,6 +230,13 @@ export default async function AdminClientesPage() {
 
                     <td className="px-5 py-4 align-top">
                       <div className="flex min-w-56 flex-wrap gap-2">
+                        <Link
+                          href={`/admin/clientes/${customer.id}`}
+                          className="rounded-full border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:border-blue-800 hover:text-blue-800"
+                        >
+                          Ver detalhes
+                        </Link>
+
                         {canApproveCustomer(customer.status) ? (
                           <form action={approveCustomerAction}>
                             <input

@@ -101,9 +101,9 @@ export default async function CartPage() {
               </h1>
 
               <p className="max-w-3xl text-base leading-7 text-slate-600">
-                Confira os materiais selecionados. O checkout será a próxima
-                etapa, com validação de cliente aprovado, pedido mínimo,
-                desconto e instruções de PIX.
+                Confira os materiais selecionados. No checkout, o sistema valida
+                cliente aprovado, pedido mínimo, estoque disponível, desconto e
+                instruções de PIX.
               </p>
             </div>
           </div>
@@ -282,15 +282,15 @@ export default async function CartPage() {
 
               {pricing.discountExpiresAt ? (
                 <p className="rounded-2xl border border-blue-100 bg-blue-50 px-3 py-2 text-sm leading-6 text-blue-900">
-                  Desconto de 10% aplicado. Validade para pagamento:{" "}
+                  Desconto de 10% aplicado para pedidos acima de R$ 1.000,00.
+                  Validade para pagamento:{" "}
                   {pricing.discountExpiresAt.toLocaleDateString("pt-BR")}.
                 </p>
               ) : null}
 
               {pricing.isMinimumReached ? (
                 <p className="rounded-2xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm leading-6 text-emerald-900">
-                  Pedido mínimo atingido. O próximo passo será implementar o
-                  checkout com reserva de estoque e PIX manual.
+                  Pedido mínimo atingido. Você já pode avançar para o checkout.
                 </p>
               ) : (
                 <p className="rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm leading-6 text-amber-900">
@@ -299,9 +299,15 @@ export default async function CartPage() {
                 </p>
               )}
 
-              <button className="button-primary w-full opacity-60" disabled>
-                Checkout em implementação
-              </button>
+              {pricing.isMinimumReached ? (
+                <Link className="button-primary flex w-full" href="/checkout">
+                  Avançar para checkout
+                </Link>
+              ) : (
+                <button className="button-primary w-full opacity-60" disabled>
+                  Checkout bloqueado
+                </button>
+              )}
 
               <form action={clearCartAction}>
                 <button className="button-secondary w-full" type="submit">
