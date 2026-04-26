@@ -3,8 +3,6 @@
 import { ProductStatus } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { z } from "zod";
-
 import {
   addCartItem,
   clearCart,
@@ -13,27 +11,44 @@ import {
 } from "@/lib/cart";
 import { prisma } from "@/lib/prisma";
 
-const cartActionSchema = z.object({
-  productId: z.string().min(1, "Produto inválido."),
-  quantity: z.coerce.number().int().min(1).max(999).default(1),
-});
+function getStringField(formData: FormData, fieldName: string): string | null {
+  const value = formData.get(fieldName);
 
-export async function addToCartAction(formData: FormData) {
-  const parsed = cartActionSchema.safeParse({
-    productId: formData.get("productId"),
-    quantity: formData.get("quantity") ?? "1",
-  });
-
-  if (!parsed.success) {
-    throw new Error(parsed.error.issues[0]?.message ?? "Item inválido.");
+  if (typeof value !== "string") {
+    return null;
   }
 
-  const product = await prisma.product.findFirst({
+  const normalizedValue = value.trim();
+
+  return normalizedValue.length > 0 ? normalizedValue : null;
+}
+
+function getQuantityField(formData: FormData): number {
+  const value = formData.get("quantity");
+
+  if (typeof value !== "string") {
+    return 1;
+  }
+
+  const parsedValue = Number(value);
+
+  if (!Number.isInteger(parsedValue) || parsedValue < 1) {
+    return 1;
+  }
+
+  return parsedValue;
+}
+
+async function findAvailableProduct(productId: string) {
+  return prisma.product.findFirst({
     where: {
-      id: parsed.data.productId,
+      id: productId,
       isActive: true,
       status: {
         not: ProductStatus.INACTIVE,
+      },
+      stockCurrent: {
+        gt: 0,
       },
     },
     select: {
@@ -41,62 +56,79 @@ export async function addToCartAction(formData: FormData) {
       stockCurrent: true,
     },
   });
+}
+
+export async function addToCartAction(formData: FormData): Promise<void> {
+  const productId = getStringField(formData, "productId");
+
+  if (!productId) {
+    redirect("/catalogo");
+  }
+
+  const product = await findAvailableProduct(productId);
 
   if (!product) {
-    throw new Error("Produto não encontrado ou inativo.");
+    redirect("/catalogo");
   }
 
-  if (product.stockCurrent <= 0) {
-    throw new Error("Produto esgotado.");
-  }
+  const requestedQuantity = getQuantityField(formData);
+  const quantity = Math.min(requestedQuantity, product.stockCurrent);
 
   await addCartItem({
     productId: product.id,
-    quantity: Math.min(parsed.data.quantity, product.stockCurrent),
+    quantity,
   });
 
   revalidatePath("/carrinho");
+  revalidatePath("/catalogo");
+
   redirect("/carrinho");
 }
 
-export async function updateCartItemAction(formData: FormData) {
-  const parsed = cartActionSchema.safeParse({
-    productId: formData.get("productId"),
-    quantity: formData.get("quantity") ?? "1",
-  });
+export async function updateCartItemAction(formData: FormData): Promise<void> {
+  const productId = getStringField(formData, "productId");
 
-  if (!parsed.success) {
-    throw new Error(parsed.error.issues[0]?.message ?? "Item inválido.");
+  if (!productId) {
+    redirect("/carrinho");
   }
 
-  const product = await prisma.product.findUnique({
-    where: { id: parsed.data.productId },
-    select: { stockCurrent: true },
-  });
+  const product = await findAvailableProduct(productId);
+
+  if (!product) {
+    await removeCartItem(productId);
+    revalidatePath("/carrinho");
+    redirect("/carrinho");
+  }
+
+  const requestedQuantity = getQuantityField(formData);
+  const quantity = Math.min(requestedQuantity, product.stockCurrent);
 
   await updateCartItem({
-    productId: parsed.data.productId,
-    quantity: Math.min(
-      parsed.data.quantity,
-      product?.stockCurrent ?? parsed.data.quantity,
-    ),
+    productId: product.id,
+    quantity,
   });
 
   revalidatePath("/carrinho");
+
+  redirect("/carrinho");
 }
 
-export async function removeCartItemAction(formData: FormData) {
-  const productId = formData.get("productId");
+export async function removeCartItemAction(formData: FormData): Promise<void> {
+  const productId = getStringField(formData, "productId");
 
-  if (typeof productId !== "string" || !productId) {
-    throw new Error("Produto inválido.");
+  if (productId) {
+    await removeCartItem(productId);
   }
 
-  await removeCartItem(productId);
   revalidatePath("/carrinho");
+
+  redirect("/carrinho");
 }
 
-export async function clearCartAction() {
+export async function clearCartAction(): Promise<void> {
   await clearCart();
+
   revalidatePath("/carrinho");
+
+  redirect("/carrinho");
 }

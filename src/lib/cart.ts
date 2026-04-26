@@ -1,108 +1,150 @@
-import "server-only";
-
 import { cookies } from "next/headers";
-import { z } from "zod";
 
 const CART_COOKIE_NAME = "asr_cart";
-const CART_MAX_AGE_SECONDS = 60 * 60 * 24 * 30;
+const CART_COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 14;
+const MAX_ITEM_QUANTITY = 999;
 
-const cartItemSchema = z.object({
-  productId: z.string().min(1),
-  quantity: z.number().int().min(1).max(999),
-});
+export type CartItem = {
+  productId: string;
+  quantity: number;
+};
 
-const cartSchema = z.array(cartItemSchema).max(200);
+type CartCookiePayload = [string, number][];
 
-export type CartItem = z.infer<typeof cartItemSchema>;
-
-function normalizeQuantity(quantity: number): number {
-  if (!Number.isInteger(quantity) || quantity < 1) return 1;
-  return Math.min(quantity, 999);
+function isCartCookiePayload(value: unknown): value is CartCookiePayload {
+  return (
+    Array.isArray(value) &&
+    value.every(
+      (item) =>
+        Array.isArray(item) &&
+        item.length === 2 &&
+        typeof item[0] === "string" &&
+        Number.isInteger(item[1]),
+    )
+  );
 }
 
-export async function getCartItems(): Promise<CartItem[]> {
-  const cookieStore = await cookies();
-  const rawCart = cookieStore.get(CART_COOKIE_NAME)?.value;
+function normalizeQuantity(quantity: number): number {
+  if (!Number.isInteger(quantity) || quantity <= 0) {
+    return 0;
+  }
 
-  if (!rawCart) return [];
+  return Math.min(quantity, MAX_ITEM_QUANTITY);
+}
+
+function normalizeCartItems(items: CartItem[]): CartItem[] {
+  const groupedItems = new Map<string, number>();
+
+  for (const item of items) {
+    const productId = item.productId.trim();
+    const quantity = normalizeQuantity(item.quantity);
+
+    if (!productId || quantity <= 0) {
+      continue;
+    }
+
+    const currentQuantity = groupedItems.get(productId) ?? 0;
+    groupedItems.set(
+      productId,
+      Math.min(currentQuantity + quantity, MAX_ITEM_QUANTITY),
+    );
+  }
+
+  return Array.from(groupedItems.entries()).map(([productId, quantity]) => ({
+    productId,
+    quantity,
+  }));
+}
+
+function serializeCartItems(items: CartItem[]): string {
+  const payload: CartCookiePayload = normalizeCartItems(items).map((item) => [
+    item.productId,
+    item.quantity,
+  ]);
+
+  return encodeURIComponent(JSON.stringify(payload));
+}
+
+function deserializeCartItems(value: string | undefined): CartItem[] {
+  if (!value) {
+    return [];
+  }
 
   try {
-    const parsed = JSON.parse(decodeURIComponent(rawCart));
-    const result = cartSchema.safeParse(parsed);
+    const parsedValue: unknown = JSON.parse(decodeURIComponent(value));
 
-    return result.success ? result.data : [];
+    if (!isCartCookiePayload(parsedValue)) {
+      return [];
+    }
+
+    return normalizeCartItems(
+      parsedValue.map(([productId, quantity]) => ({
+        productId,
+        quantity,
+      })),
+    );
   } catch {
     return [];
   }
 }
 
-export async function setCartItems(items: CartItem[]): Promise<void> {
-  const normalizedItems = items
-    .filter((item) => item.productId.trim().length > 0)
-    .map((item) => ({
-      productId: item.productId,
-      quantity: normalizeQuantity(item.quantity),
-    }));
+export async function getCartItems(): Promise<CartItem[]> {
+  const cookieStore = await cookies();
+  const cartCookie = cookieStore.get(CART_COOKIE_NAME);
 
+  return deserializeCartItems(cartCookie?.value);
+}
+
+export async function saveCartItems(items: CartItem[]): Promise<void> {
   const cookieStore = await cookies();
 
-  if (normalizedItems.length === 0) {
-    cookieStore.delete(CART_COOKIE_NAME);
+  cookieStore.set(CART_COOKIE_NAME, serializeCartItems(items), {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    path: "/",
+    maxAge: CART_COOKIE_MAX_AGE_SECONDS,
+  });
+}
+
+export async function addCartItem(input: CartItem): Promise<void> {
+  const currentItems = await getCartItems();
+
+  await saveCartItems([...currentItems, input]);
+}
+
+export async function updateCartItem(input: CartItem): Promise<void> {
+  const currentItems = await getCartItems();
+  const quantity = normalizeQuantity(input.quantity);
+
+  if (quantity <= 0) {
+    await removeCartItem(input.productId);
     return;
   }
 
-  cookieStore.set(
-    CART_COOKIE_NAME,
-    encodeURIComponent(JSON.stringify(normalizedItems)),
+  const nextItems = currentItems.filter(
+    (item) => item.productId !== input.productId,
+  );
+
+  await saveCartItems([
+    ...nextItems,
     {
-      httpOnly: true,
-      sameSite: "lax",
-      secure: process.env.NODE_ENV === "production",
-      path: "/",
-      maxAge: CART_MAX_AGE_SECONDS,
+      productId: input.productId,
+      quantity,
     },
+  ]);
+}
+
+export async function removeCartItem(productId: string): Promise<void> {
+  const currentItems = await getCartItems();
+
+  await saveCartItems(
+    currentItems.filter((item) => item.productId !== productId),
   );
 }
 
 export async function clearCart(): Promise<void> {
   const cookieStore = await cookies();
+
   cookieStore.delete(CART_COOKIE_NAME);
-}
-
-export async function addCartItem(input: CartItem): Promise<void> {
-  const items = await getCartItems();
-  const existingItem = items.find((item) => item.productId === input.productId);
-
-  if (existingItem) {
-    existingItem.quantity = normalizeQuantity(
-      existingItem.quantity + input.quantity,
-    );
-    await setCartItems(items);
-    return;
-  }
-
-  await setCartItems([
-    ...items,
-    {
-      productId: input.productId,
-      quantity: normalizeQuantity(input.quantity),
-    },
-  ]);
-}
-
-export async function updateCartItem(input: CartItem): Promise<void> {
-  const items = await getCartItems();
-
-  await setCartItems(
-    items.map((item) =>
-      item.productId === input.productId
-        ? { ...item, quantity: normalizeQuantity(input.quantity) }
-        : item,
-    ),
-  );
-}
-
-export async function removeCartItem(productId: string): Promise<void> {
-  const items = await getCartItems();
-  await setCartItems(items.filter((item) => item.productId !== productId));
 }
