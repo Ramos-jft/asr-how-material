@@ -5,7 +5,6 @@ import {
   NotificationStatus,
   OrderStatus,
   PaymentStatus,
-  UserStatus,
   type Prisma,
 } from "@prisma/client";
 import { notFound } from "next/navigation";
@@ -43,11 +42,6 @@ const customerStatusClassNames = {
     "border-emerald-200 bg-emerald-50 text-emerald-800",
   [CustomerStatus.BLOCKED]: "border-red-200 bg-red-50 text-red-800",
 } satisfies Record<CustomerStatus, string>;
-
-const userStatusLabels = {
-  [UserStatus.ACTIVE]: "Ativo",
-  [UserStatus.INACTIVE]: "Inativo",
-} satisfies Record<UserStatus, string>;
 
 const orderStatusLabels = {
   [OrderStatus.AWAITING_PAYMENT]: "Aguardando pagamento",
@@ -157,29 +151,6 @@ export default async function AdminCustomerDetailPage({
       id: customerId,
     },
     include: {
-      user: {
-        select: {
-          id: true,
-          name: true,
-          email: true,
-          status: true,
-          lastLoginAt: true,
-          createdAt: true,
-          updatedAt: true,
-          roles: {
-            select: {
-              role: {
-                select: {
-                  name: true,
-                },
-              },
-            },
-            orderBy: {
-              createdAt: "asc",
-            },
-          },
-        },
-      },
       approvedBy: {
         select: {
           name: true,
@@ -280,8 +251,6 @@ export default async function AdminCustomerDetailPage({
       },
     },
   });
-
-  const roles = customer.user?.roles.map((item) => item.role.name) ?? [];
 
   return (
     <section className="space-y-6">
@@ -506,47 +475,6 @@ export default async function AdminCustomerDetailPage({
         </div>
 
         <aside className="space-y-6">
-          <SectionCard
-            title="Dados de acesso"
-            description="Informações de login visíveis ao admin, sem senha ou hash."
-          >
-            <DataGrid>
-              <DataItem
-                label="Usuário vinculado"
-                value={customer.user ? "Sim" : "Não"}
-              />
-              <DataItem
-                label="Nome do usuário"
-                value={customer.user?.name ?? "Não informado"}
-              />
-              <DataItem
-                label="E-mail de login"
-                value={customer.user?.email ?? "Não informado"}
-              />
-              <DataItem
-                label="Status do usuário"
-                value={
-                  customer.user
-                    ? userStatusLabels[customer.user.status]
-                    : "Não informado"
-                }
-              />
-              <DataItem
-                label="Último login"
-                value={formatDateTime(customer.user?.lastLoginAt ?? null)}
-              />
-              <DataItem
-                label="Roles"
-                value={roles.length > 0 ? roles.join(", ") : "Não informado"}
-              />
-            </DataGrid>
-
-            <div className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900">
-              Senha não exibida. O sistema armazena somente o hash criptográfico
-              da senha, e ele não é mostrado nesta tela.
-            </div>
-          </SectionCard>
-
           <SectionCard
             title="Notificações"
             description="Últimas 10 notificações vinculadas ao comprador."

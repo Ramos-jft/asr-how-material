@@ -11,8 +11,44 @@ export const metadata: Metadata = {
     "Acesso de compradores aprovados ao catálogo, carrinho, checkout e pedidos.",
 };
 
-export default async function BuyerLoginPage() {
+type BuyerLoginPageProps = Readonly<{
+  searchParams?: Promise<{
+    sucesso?: string;
+    erro?: string;
+  }>;
+}>;
+
+function AlertMessage({
+  type,
+  message,
+}: Readonly<{
+  type: "success" | "error";
+  message?: string;
+}>) {
+  if (!message) return null;
+
+  const className =
+    type === "success"
+      ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+      : "border-red-200 bg-red-50 text-red-700";
+
+  return (
+    <div
+      role="alert"
+      aria-live="polite"
+      className={`rounded-2xl border px-4 py-3 text-sm ${className}`}
+    >
+      {message}
+    </div>
+  );
+}
+
+export default async function BuyerLoginPage({
+  searchParams,
+}: BuyerLoginPageProps) {
   await requireGuest();
+
+  const params = await searchParams;
 
   return (
     <main className="page-shell">
@@ -79,13 +115,29 @@ export default async function BuyerLoginPage() {
           </div>
         </div>
 
-        <LoginForm
-          title="Acesso do comprador"
-          description="Entre com seu usuário cadastrado e aprovado para finalizar compras e acompanhar pedidos."
-          submitLabel="Entrar como comprador"
-          pendingLabel="Entrando..."
-          emailPlaceholder="comprador@email.com"
-        />
+        <div className="space-y-4">
+          <AlertMessage type="success" message={params?.sucesso} />
+          <AlertMessage type="error" message={params?.erro} />
+
+          <LoginForm
+            title="Acesso do comprador"
+            description="Entre com seu usuário cadastrado e aprovado para finalizar compras e acompanhar pedidos."
+            submitLabel="Entrar como comprador"
+            pendingLabel="Entrando..."
+            emailPlaceholder="comprador@email.com"
+          />
+
+          <div className="panel panel-tight text-center text-sm leading-6 text-slate-600">
+            <p>Não lembra sua senha?</p>
+
+            <Link
+              className="font-semibold text-blue-800 underline-offset-4 hover:underline"
+              href="/recuperar-senha"
+            >
+              Esqueci minha senha
+            </Link>
+          </div>
+        </div>
       </section>
     </main>
   );
