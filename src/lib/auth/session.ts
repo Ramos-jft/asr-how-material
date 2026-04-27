@@ -46,7 +46,6 @@ export async function createSession(input: {
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
     path: "/",
-    maxAge: SESSION_DURATION_SECONDS,
   });
 }
 

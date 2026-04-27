@@ -4,65 +4,41 @@ import type { ReactNode } from "react";
 
 import { logoutAction } from "@/app/actions/logout";
 import { BackButton } from "@/components/navigation/BackButton";
-import { requirePermission } from "@/lib/auth/guards";
-import { PERMISSIONS } from "@/lib/auth/permissions";
 
-const adminLinks = [
-  {
-    href: "/admin",
-    label: "Dashboard",
-  },
-  {
-    href: "/admin/clientes",
-    label: "Clientes",
-  },
-  {
-    href: "/admin/produtos",
-    label: "Produtos",
-  },
-  {
-    href: "/admin/estoque",
-    label: "Estoque",
-  },
-  {
-    href: "/admin/pedidos",
-    label: "Pedidos",
-  },
-  {
-    href: "/admin/janela-vendas",
-    label: "Janela",
-  },
-  {
-    href: "/admin/pdv",
-    label: "PDV",
-  },
-  {
-    href: "/admin/relatorios",
-    label: "Relatórios",
-  },
-  {
-    href: "/cadastro",
-    label: "Cadastro",
-  },
+const buyerLinks = [
   {
     href: "/catalogo",
     label: "Catálogo",
   },
+  {
+    href: "/carrinho",
+    label: "Carrinho",
+  },
+  {
+    href: "/checkout",
+    label: "Checkout",
+  },
+  {
+    href: "/pedidos",
+    label: "Meus pedidos",
+  },
+  {
+    href: "/minha-conta",
+    label: "Minha conta",
+  },
 ];
 
-type AdminLayoutProps = Readonly<{
+type BuyerShellProps = Readonly<{
   children: ReactNode;
 }>;
 
-export default async function AdminLayout({ children }: AdminLayoutProps) {
-  const auth = await requirePermission(PERMISSIONS.DASHBOARD_READ);
-
+export default function BuyerShell({ children }: BuyerShellProps) {
   return (
-    <main className="min-h-screen bg-slate-50">
+    <section className="min-h-screen bg-slate-100">
       <header className="border-b border-slate-200 bg-white">
         <div className="mx-auto flex max-w-7xl flex-col gap-5 px-6 py-5">
           <div className="flex items-center justify-between gap-4">
-            <Link href="/admin" aria-label="Ir para o dashboard administrativo">
+            <Link href="/catalogo" aria-label="Ir para o catálogo">
               <Image
                 src="/brand/logo-asr-how.png"
                 alt="Logo ASR HOW Brasil"
@@ -86,17 +62,20 @@ export default async function AdminLayout({ children }: AdminLayoutProps) {
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <div>
               <p className="text-sm font-semibold uppercase tracking-[0.3em] text-blue-800">
-                Material ASR HOW Brasil
+                Área do comprador
               </p>
 
               <h1 className="mt-1 text-xl font-bold tracking-tight text-slate-950">
-                Painel administrativo
+                Material ASR HOW Brasil
               </h1>
             </div>
 
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-              <nav className="flex flex-wrap gap-2" aria-label="Menu admin">
-                {adminLinks.map((link) => (
+              <nav
+                className="flex flex-wrap gap-2"
+                aria-label="Menu do comprador"
+              >
+                {buyerLinks.map((link) => (
                   <Link
                     key={link.href}
                     href={link.href}
@@ -124,34 +103,7 @@ export default async function AdminLayout({ children }: AdminLayoutProps) {
         </div>
       </header>
 
-      <div className="mx-auto grid max-w-7xl gap-6 px-6 py-8 lg:grid-cols-[280px_1fr]">
-        <aside className="h-fit rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-[0.25em] text-slate-500">
-            Usuário atual
-          </p>
-
-          <h2 className="mt-3 text-lg font-bold text-slate-950">
-            {auth.user.name}
-          </h2>
-
-          <p className="mt-1 break-all text-sm text-slate-600">
-            {auth.user.email}
-          </p>
-
-          <div className="mt-4 flex flex-wrap gap-2">
-            {auth.roles.map((role) => (
-              <span
-                key={role}
-                className="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-800"
-              >
-                {role}
-              </span>
-            ))}
-          </div>
-        </aside>
-
-        <div>{children}</div>
-      </div>
-    </main>
+      {children}
+    </section>
   );
 }
