@@ -2,7 +2,10 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { OrderStatus, PaymentStatus } from "@prisma/client";
 
-import { confirmPixPaymentAction } from "@/app/admin/pedidos/actions";
+import {
+  cancelOrderAndReleaseStockAction,
+  confirmPixPaymentAction,
+} from "@/app/admin/pedidos/actions";
 import { requirePermission } from "@/lib/auth/guards";
 import { hasPermission, PERMISSIONS } from "@/lib/auth/permissions";
 import { prisma } from "@/lib/prisma";
@@ -86,6 +89,10 @@ function canConfirmPayment(status: OrderStatus): boolean {
   );
 }
 
+function canCancelAndReleaseStock(status: OrderStatus): boolean {
+  return status === OrderStatus.AWAITING_PAYMENT;
+}
+
 function OrderStatusBadge({ status }: Readonly<{ status: OrderStatus }>) {
   return (
     <span
@@ -114,6 +121,11 @@ export default async function AdminPedidosPage({
   const canConfirmPix = hasPermission(
     auth.permissions,
     PERMISSIONS.PAYMENTS_CONFIRM_PIX,
+  );
+
+  const canCancelRelease = hasPermission(
+    auth.permissions,
+    PERMISSIONS.ORDERS_CANCEL_RELEASE,
   );
 
   const [orders, statusCounts] = await Promise.all([
@@ -248,6 +260,9 @@ export default async function AdminPedidosPage({
 
             const shouldShowPaymentForm =
               canConfirmPix && canConfirmPayment(order.status);
+
+            const shouldShowCancelForm =
+              canCancelRelease && canCancelAndReleaseStock(order.status);
 
             return (
               <article
@@ -472,6 +487,55 @@ export default async function AdminPedidosPage({
                         </div>
                       )}
                     </section>
+
+                    {shouldShowCancelForm ? (
+                      <form
+                        action={cancelOrderAndReleaseStockAction}
+                        className="rounded-2xl border border-red-200 bg-red-50 p-4"
+                      >
+                        <input type="hidden" name="orderId" value={order.id} />
+
+                        <h4 className="font-semibold text-red-950">
+                          Cancelar pedido e liberar estoque
+                        </h4>
+
+                        <p className="mt-2 text-sm leading-6 text-red-800">
+                          Use esta ação somente quando o pedido ainda não teve
+                          pagamento confirmado. O estoque reservado será
+                          devolvido e o pedido ficará como cancelado.
+                        </p>
+
+                        <div className="mt-4 space-y-2">
+                          <label
+                            className="field-label text-red-950"
+                            htmlFor={`reason-${order.id}`}
+                          >
+                            Motivo do cancelamento
+                          </label>
+
+                          <textarea
+                            id={`reason-${order.id}`}
+                            name="reason"
+                            className="field-input min-h-24 bg-white"
+                            placeholder="Ex.: comprador desistiu do pedido antes do pagamento."
+                          />
+                        </div>
+
+                        <button
+                          type="submit"
+                          className="mt-4 w-full rounded-full bg-red-700 px-4 py-3 text-sm font-semibold text-white transition hover:bg-red-800"
+                        >
+                          Cancelar e liberar estoque
+                        </button>
+                      </form>
+                    ) : null}
+
+                    {canCancelRelease ? null : (
+                      <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm leading-6 text-slate-600">
+                        Seu usuário pode visualizar pedidos, mas não possui
+                        permissão para cancelar pedidos e liberar estoque.
+                      </div>
+                    )}
 
                     {shouldShowPaymentForm ? (
                       <form
