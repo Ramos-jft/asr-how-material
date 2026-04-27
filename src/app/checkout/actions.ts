@@ -19,6 +19,7 @@ import { requireAuth } from "@/lib/auth/guards";
 import { clearCart, getCartItems, type CartItem } from "@/lib/cart";
 import { createOrderCode } from "@/lib/orders/order-code";
 import { prisma } from "@/lib/prisma";
+import { getActiveStoreWindow } from "@/lib/store-window";
 
 const checkoutProductSelect = {
   id: true,
@@ -266,6 +267,7 @@ async function createOrderWithUniqueCode(input: {
   discountCentsApplied: number;
   totalDueCents: number;
   discountExpiresAt: Date | null;
+  storeWindowId: string;
 }) {
   const {
     tx,
@@ -277,6 +279,7 @@ async function createOrderWithUniqueCode(input: {
     discountCentsApplied,
     totalDueCents,
     discountExpiresAt,
+    storeWindowId,
   } = input;
 
   for (let attempt = 0; attempt < 5; attempt++) {
@@ -300,6 +303,7 @@ async function createOrderWithUniqueCode(input: {
         totalDueCents,
         additionalDueCents: 0,
         discountExpiresAt,
+        storeWindowId,
         shippingAddressJson,
         items: {
           create: orderItems.map((item) => ({
@@ -473,10 +477,19 @@ async function createCheckoutOrder(input: {
   const customer = await getCheckoutCustomer(input.tx, input.userId);
   assertCustomerCanCheckout(customer);
 
+  const activeStoreWindow = await getActiveStoreWindow();
+
+  if (!activeStoreWindow) {
+    throw new Error(
+      "A loja está fora do período de vendas. O checkout está bloqueado no momento.",
+    );
+  }
+
   const orderItems = await buildOrderItemSnapshots(input.tx, input.cartItems);
   const pricing = calculatePricingOrThrow(orderItems);
 
   const order = await createOrderWithUniqueCode({
+    storeWindowId: activeStoreWindow.id,
     tx: input.tx,
     customerId: customer.id,
     userId: input.userId,

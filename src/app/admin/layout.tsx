@@ -26,6 +26,10 @@ const adminLinks = [
     label: "Pedidos",
   },
   {
+    href: "/admin/janela-vendas",
+    label: "Janela",
+  },
+  {
     href: "/admin/pdv",
     label: "PDV",
   },

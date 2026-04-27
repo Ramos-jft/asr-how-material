@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { CustomerStatus, ProductStatus, type Prisma } from "@prisma/client";
+import { getActiveStoreWindow } from "@/lib/store-window";
 
 import { createOrderAction } from "@/app/checkout/actions";
 import {
@@ -453,7 +454,10 @@ export default async function CheckoutPage({
   searchParams,
 }: Readonly<CheckoutPageProps>) {
   const [{ user }, params] = await Promise.all([requireAuth(), searchParams]);
-  const cartItems = await getCartItems();
+  const [cartItems, activeStoreWindow] = await Promise.all([
+    getCartItems(),
+    getActiveStoreWindow(),
+  ]);
 
   const [customer, products] = await Promise.all([
     prisma.customer.findUnique({
@@ -487,6 +491,13 @@ export default async function CheckoutPage({
     missingMinimumCents,
   });
 
+  const checkoutProblems = activeStoreWindow
+    ? problems
+    : [
+        "A loja está fora do período de vendas. O catálogo permanece disponível, mas o checkout está bloqueado.",
+        ...problems,
+      ];
+
   return (
     <main className="page-shell items-start">
       <section className="panel w-full space-y-8">
@@ -502,8 +513,8 @@ export default async function CheckoutPage({
 
           <CheckoutSummary
             pricing={pricing}
-            problems={problems}
-            canCreateOrder={problems.length === 0}
+            problems={checkoutProblems}
+            canCreateOrder={checkoutProblems.length === 0}
           />
         </div>
       </section>
