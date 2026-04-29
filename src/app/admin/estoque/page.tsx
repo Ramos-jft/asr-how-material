@@ -2,8 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ProductStatus, StockMovementType } from "@prisma/client";
 
+import { adjustStockAction } from "@/app/admin/estoque/actions";
 import { requirePermission } from "@/lib/auth/guards";
-import { PERMISSIONS } from "@/lib/auth/permissions";
+import { hasPermission, PERMISSIONS } from "@/lib/auth/permissions";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -12,6 +13,13 @@ export const metadata: Metadata = {
   title: "Estoque",
   description: "Consulta administrativa de estoque e movimentações.",
 };
+
+type AdminStockPageProps = Readonly<{
+  searchParams?: Promise<{
+    sucesso?: string;
+    erro?: string;
+  }>;
+}>;
 
 const movementLabels = {
   [StockMovementType.ENTRY]: "Entrada",
@@ -45,8 +53,41 @@ function getStockClassName(input: {
   return "font-semibold text-slate-950";
 }
 
-export default async function AdminStockPage() {
-  await requirePermission(PERMISSIONS.STOCK_READ);
+function AlertMessage({
+  type,
+  message,
+}: Readonly<{
+  type: "success" | "error";
+  message?: string;
+}>) {
+  if (!message) return null;
+
+  const className =
+    type === "success"
+      ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+      : "border-red-200 bg-red-50 text-red-700";
+
+  return (
+    <div
+      role="alert"
+      aria-live="polite"
+      className={`rounded-2xl border px-4 py-3 text-sm ${className}`}
+    >
+      {message}
+    </div>
+  );
+}
+
+export default async function AdminStockPage({
+  searchParams,
+}: AdminStockPageProps) {
+  const auth = await requirePermission(PERMISSIONS.STOCK_READ);
+  const params = await searchParams;
+
+  const canAdjustStock = hasPermission(
+    auth.permissions,
+    PERMISSIONS.STOCK_ADJUST,
+  );
 
   const [products, recentMovements] = await Promise.all([
     prisma.product.findMany({
@@ -121,16 +162,21 @@ export default async function AdminStockPage() {
 
         <div className="mt-4 space-y-2">
           <h2 className="text-2xl font-bold tracking-tight text-slate-950">
-            Consulta de estoque
+            Consulta e ajuste de estoque
           </h2>
 
           <p className="max-w-3xl text-sm leading-6 text-slate-600">
             Acompanhe produtos com estoque baixo, itens sem estoque e
-            movimentações recentes. Ajustes manuais ficam para uma próxima etapa
-            para evitar alterações acidentais.
+            movimentações recentes. Usuários autorizados também podem registrar
+            entrada ou ajuste manual com auditoria.
           </p>
         </div>
       </header>
+
+      <div className="space-y-3">
+        <AlertMessage type="success" message={params?.sucesso} />
+        <AlertMessage type="error" message={params?.erro} />
+      </div>
 
       <section className="grid gap-4 md:grid-cols-4">
         <article className="metric-card">
@@ -153,6 +199,92 @@ export default async function AdminStockPage() {
           <strong className="metric-value">{outOfStockCount}</strong>
         </article>
       </section>
+
+      {canAdjustStock ? (
+        <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div>
+            <h3 className="text-lg font-semibold text-slate-950">
+              Ajuste manual de estoque
+            </h3>
+
+            <p className="mt-1 text-sm leading-6 text-slate-600">
+              Use entrada para somar unidades ao estoque. Use ajuste absoluto
+              para corrigir o saldo final do produto. O motivo é obrigatório e a
+              operação fica registrada no histórico.
+            </p>
+          </div>
+
+          <form
+            action={adjustStockAction}
+            className="mt-5 grid gap-4 lg:grid-cols-[minmax(0,1fr)_190px_180px_minmax(0,1fr)_auto]"
+          >
+            <label className="space-y-2">
+              <span className="field-label">Produto</span>
+              <select className="field-input" name="productId" required>
+                <option value="">Selecione</option>
+                {products.map((product) => (
+                  <option key={product.id} value={product.id}>
+                    {product.sku} — {product.name} — estoque atual:{" "}
+                    {product.stockCurrent}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="space-y-2">
+              <span className="field-label">Tipo</span>
+              <select
+                className="field-input"
+                name="movementType"
+                defaultValue="ENTRY"
+                required
+              >
+                <option value="ENTRY">Entrada</option>
+                <option value="ADJUSTMENT">Ajuste absoluto</option>
+              </select>
+            </label>
+
+            <label className="space-y-2">
+              <span className="field-label">Quantidade</span>
+              <input
+                className="field-input"
+                name="quantity"
+                type="number"
+                min={0}
+                step={1}
+                required
+              />
+            </label>
+
+            <label className="space-y-2">
+              <span className="field-label">Motivo</span>
+              <input
+                className="field-input"
+                name="reason"
+                placeholder="Ex.: entrada de mercadoria, inventário, correção..."
+                required
+              />
+            </label>
+
+            <div className="flex items-end">
+              <button className="button-primary w-full" type="submit">
+                Registrar
+              </button>
+            </div>
+          </form>
+
+          <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900">
+            No modo <strong>Entrada</strong>, a quantidade será somada ao
+            estoque atual. No modo <strong>Ajuste absoluto</strong>, a
+            quantidade será o novo saldo final do produto.
+          </div>
+        </section>
+      ) : (
+        <section className="rounded-3xl border border-slate-200 bg-slate-50 p-5 text-sm leading-6 text-slate-600">
+          Seu usuário pode consultar estoque, mas não possui permissão para
+          ajustes manuais.
+        </section>
+      )}
 
       <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
         <h3 className="text-lg font-semibold text-slate-950">
@@ -200,9 +332,9 @@ export default async function AdminStockPage() {
                       <td className="px-4 py-3 align-top">
                         <Link
                           className="font-semibold text-slate-950 underline-offset-4 hover:underline"
-                          href={`/produto/${product.slug}`}
-                          target="_blank"
-                          rel="noreferrer"
+                          href={`/admin/produtos?q=${encodeURIComponent(
+                            product.sku,
+                          )}`}
                         >
                           {product.name}
                         </Link>
