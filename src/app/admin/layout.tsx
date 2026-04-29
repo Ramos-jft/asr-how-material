@@ -40,13 +40,16 @@ const adminLinks = [
     href: "/admin/relatorios",
     label: "Relatórios",
   },
-  {
-    href: "/cadastro",
-    label: "Cadastro",
-  },
+];
+
+const quickAccessLinks = [
   {
     href: "/catalogo",
-    label: "Catálogo",
+    label: "Ver catálogo",
+  },
+  {
+    href: "/cadastro",
+    label: "Cadastro comprador",
   },
 ];
 
@@ -95,7 +98,10 @@ export default async function AdminLayout({ children }: AdminLayoutProps) {
             </div>
 
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-              <nav className="flex flex-wrap gap-2" aria-label="Menu admin">
+              <nav
+                className="flex flex-wrap gap-2"
+                aria-label="Menu administrativo"
+              >
                 {adminLinks.map((link) => (
                   <Link
                     key={link.href}
@@ -125,29 +131,59 @@ export default async function AdminLayout({ children }: AdminLayoutProps) {
       </header>
 
       <div className="mx-auto grid max-w-7xl gap-6 px-6 py-8 lg:grid-cols-[280px_1fr]">
-        <aside className="h-fit rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-[0.25em] text-slate-500">
-            Usuário atual
-          </p>
+        <aside className="h-fit space-y-5 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+          <section>
+            <p className="text-xs font-semibold uppercase tracking-[0.25em] text-slate-500">
+              Usuário atual
+            </p>
 
-          <h2 className="mt-3 text-lg font-bold text-slate-950">
-            {auth.user.name}
-          </h2>
+            <h2 className="mt-3 text-lg font-bold text-slate-950">
+              {auth.user.name}
+            </h2>
 
-          <p className="mt-1 break-all text-sm text-slate-600">
-            {auth.user.email}
-          </p>
+            <p className="mt-1 break-all text-sm text-slate-600">
+              {auth.user.email}
+            </p>
 
-          <div className="mt-4 flex flex-wrap gap-2">
-            {auth.roles.map((role) => (
-              <span
-                key={role}
-                className="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-800"
-              >
-                {role}
-              </span>
-            ))}
-          </div>
+            <div className="mt-4 flex flex-wrap gap-2">
+              {auth.roles.map((role) => (
+                <span
+                  key={role}
+                  className="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-800"
+                >
+                  {role}
+                </span>
+              ))}
+            </div>
+          </section>
+
+          <section className="border-t border-slate-200 pt-5">
+            <p className="text-xs font-semibold uppercase tracking-[0.25em] text-slate-500">
+              Acessos rápidos
+            </p>
+
+            <div className="mt-4 grid gap-2">
+              {quickAccessLinks.map((link) => (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:border-blue-800 hover:text-blue-800"
+                >
+                  {link.label}
+                  <span className="ml-2 text-xs font-normal text-slate-500">
+                    abre em nova aba
+                  </span>
+                </Link>
+              ))}
+            </div>
+
+            <p className="mt-3 text-xs leading-5 text-slate-500">
+              Catálogo e cadastro são áreas públicas/comprador. Por isso abrem
+              em nova aba para preservar o contexto administrativo.
+            </p>
+          </section>
         </aside>
 
         <div>{children}</div>
