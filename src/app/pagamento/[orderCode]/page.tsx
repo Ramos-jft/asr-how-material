@@ -27,6 +27,17 @@ const orderStatusLabels = {
   [OrderStatus.CANCELLED]: "Cancelado",
 } satisfies Record<OrderStatus, string>;
 
+const orderStatusClassNames = {
+  [OrderStatus.AWAITING_PAYMENT]: "border-amber-200 bg-amber-50 text-amber-800",
+  [OrderStatus.PENDING_COMPLEMENT]:
+    "border-orange-200 bg-orange-50 text-orange-800",
+  [OrderStatus.PAID_CONFIRMED]:
+    "border-emerald-200 bg-emerald-50 text-emerald-800",
+  [OrderStatus.SHIPPED]: "border-blue-200 bg-blue-50 text-blue-800",
+  [OrderStatus.COMPLETED]: "border-slate-200 bg-slate-100 text-slate-700",
+  [OrderStatus.CANCELLED]: "border-red-200 bg-red-50 text-red-700",
+} satisfies Record<OrderStatus, string>;
+
 export async function generateMetadata({
   params,
 }: Readonly<PaymentPageProps>): Promise<Metadata> {
@@ -46,16 +57,81 @@ function formatDate(date: Date | null): string {
   }).format(date);
 }
 
+function getAmountToPayCents(input: {
+  status: OrderStatus;
+  totalDueCents: number;
+  additionalDueCents: number;
+}): number {
+  if (input.status === OrderStatus.AWAITING_PAYMENT) {
+    return input.totalDueCents;
+  }
+
+  if (input.status === OrderStatus.PENDING_COMPLEMENT) {
+    return Math.max(0, input.additionalDueCents);
+  }
+
+  return 0;
+}
+
+function canSendPaymentProof(status: OrderStatus): boolean {
+  return (
+    status === OrderStatus.AWAITING_PAYMENT ||
+    status === OrderStatus.PENDING_COMPLEMENT
+  );
+}
+
+function getPaymentInstruction(input: {
+  status: OrderStatus;
+  amountToPayCents: number;
+}): string {
+  if (input.status === OrderStatus.AWAITING_PAYMENT) {
+    return `Faça o PIX no valor de ${formatCurrencyFromCents(
+      input.amountToPayCents,
+    )} e envie o comprovante pelo WhatsApp.`;
+  }
+
+  if (input.status === OrderStatus.PENDING_COMPLEMENT) {
+    return `Este pedido possui complemento pendente. Faça o PIX somente do valor complementar: ${formatCurrencyFromCents(
+      input.amountToPayCents,
+    )}.`;
+  }
+
+  if (input.status === OrderStatus.PAID_CONFIRMED) {
+    return "Pagamento confirmado. Não é necessário enviar novo PIX.";
+  }
+
+  if (input.status === OrderStatus.SHIPPED) {
+    return "Pedido enviado. Não é necessário enviar novo PIX.";
+  }
+
+  if (input.status === OrderStatus.COMPLETED) {
+    return "Pedido concluído. Não é necessário enviar novo PIX.";
+  }
+
+  return "Pedido cancelado. Não realize pagamento para este pedido.";
+}
+
+function getWhatsappPaymentLabel(status: OrderStatus): string {
+  if (status === OrderStatus.PENDING_COMPLEMENT) {
+    return "Valor complementar";
+  }
+
+  return "Valor";
+}
+
 function createWhatsappHref(input: {
   phone: string;
   orderCode: string;
-  totalDueCents: number;
+  amountToPayCents: number;
+  status: OrderStatus;
 }): string {
+  const paymentLabel = getWhatsappPaymentLabel(input.status);
+
   const message = [
     "Olá! Segue comprovante do pedido:",
     input.orderCode,
     "",
-    `Valor: ${formatCurrencyFromCents(input.totalDueCents)}`,
+    `${paymentLabel}: ${formatCurrencyFromCents(input.amountToPayCents)}`,
   ].join("\n");
 
   return `https://wa.me/${input.phone}?text=${encodeURIComponent(message)}`;
@@ -63,6 +139,16 @@ function createWhatsappHref(input: {
 
 function isLocalImagePath(src: string): boolean {
   return src.startsWith("/");
+}
+
+function OrderStatusBadge({ status }: Readonly<{ status: OrderStatus }>) {
+  return (
+    <span
+      className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${orderStatusClassNames[status]}`}
+    >
+      {orderStatusLabels[status]}
+    </span>
+  );
 }
 
 function PixQrCode({ orderCode }: Readonly<{ orderCode: string }>) {
@@ -124,6 +210,39 @@ function PixKeyInfo() {
   return null;
 }
 
+function getPaymentStatusNoticeClassName(status: OrderStatus): string {
+  if (status === OrderStatus.CANCELLED) {
+    return "border-red-200 bg-red-50 text-red-800";
+  }
+
+  if (canSendPaymentProof(status)) {
+    return "border-amber-200 bg-amber-50 text-amber-900";
+  }
+
+  return "border-emerald-200 bg-emerald-50 text-emerald-800";
+}
+
+function PaymentStatusNotice({
+  status,
+  amountToPayCents,
+}: Readonly<{
+  status: OrderStatus;
+  amountToPayCents: number;
+}>) {
+  const instruction = getPaymentInstruction({
+    status,
+    amountToPayCents,
+  });
+
+  const className = getPaymentStatusNoticeClassName(status);
+
+  return (
+    <div className={`rounded-2xl border p-4 text-sm leading-6 ${className}`}>
+      {instruction}
+    </div>
+  );
+}
+
 export default async function PaymentPage({
   params,
 }: Readonly<PaymentPageProps>) {
@@ -147,6 +266,20 @@ export default async function PaymentPage({
           createdAt: "asc",
         },
       },
+      payments: {
+        where: {
+          status: "CONFIRMED",
+        },
+        select: {
+          id: true,
+          method: true,
+          receivedAmountCents: true,
+          confirmedAt: true,
+        },
+        orderBy: {
+          createdAt: "desc",
+        },
+      },
     },
   });
 
@@ -162,10 +295,23 @@ export default async function PaymentPage({
     redirect("/acesso-negado");
   }
 
+  const amountToPayCents = getAmountToPayCents({
+    status: order.status,
+    totalDueCents: order.totalDueCents,
+    additionalDueCents: order.additionalDueCents,
+  });
+
+  const canSendProof = canSendPaymentProof(order.status);
+  const confirmedPaymentsTotalCents = order.payments.reduce(
+    (total, payment) => total + payment.receivedAmountCents,
+    0,
+  );
+
   const whatsappHref = createWhatsappHref({
     phone: env.NEXT_PUBLIC_WHATSAPP_PHONE,
     orderCode: order.code,
-    totalDueCents: order.totalDueCents,
+    amountToPayCents,
+    status: order.status,
   });
 
   return (
@@ -180,15 +326,26 @@ export default async function PaymentPage({
             </h1>
 
             <p className="max-w-3xl text-base leading-7 text-slate-600">
-              Faça o PIX no valor informado e envie o comprovante pelo WhatsApp.
-              A confirmação do pagamento é manual pelo administrador.
+              Consulte o status do pedido e envie o comprovante pelo WhatsApp
+              somente quando houver valor pendente.
             </p>
           </div>
 
-          <Link className="button-secondary" href="/catalogo">
-            Voltar ao catálogo
-          </Link>
+          <div className="flex flex-wrap gap-3">
+            <Link className="button-secondary" href="/pedidos">
+              Meus pedidos
+            </Link>
+
+            <Link className="button-secondary" href="/catalogo">
+              Voltar ao catálogo
+            </Link>
+          </div>
         </header>
+
+        <PaymentStatusNotice
+          status={order.status}
+          amountToPayCents={amountToPayCents}
+        />
 
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
           <div className="space-y-6">
@@ -204,9 +361,7 @@ export default async function PaymentPage({
                   </p>
                 </div>
 
-                <span className="badge-muted">
-                  {orderStatusLabels[order.status]}
-                </span>
+                <OrderStatusBadge status={order.status} />
               </div>
             </section>
 
@@ -224,8 +379,26 @@ export default async function PaymentPage({
                 </div>
 
                 <div>
-                  <dt className="font-medium text-slate-950">Valor devido</dt>
+                  <dt className="font-medium text-slate-950">
+                    Total do pedido
+                  </dt>
                   <dd>{formatCurrencyFromCents(order.totalDueCents)}</dd>
+                </div>
+
+                <div>
+                  <dt className="font-medium text-slate-950">
+                    Valor já confirmado
+                  </dt>
+                  <dd>
+                    {formatCurrencyFromCents(confirmedPaymentsTotalCents)}
+                  </dd>
+                </div>
+
+                <div>
+                  <dt className="font-medium text-slate-950">
+                    Valor pendente para PIX
+                  </dt>
+                  <dd>{formatCurrencyFromCents(amountToPayCents)}</dd>
                 </div>
 
                 <div>
@@ -307,29 +480,46 @@ export default async function PaymentPage({
               Enviar comprovante
             </h2>
 
-            <PixQrCode orderCode={order.code} />
+            {canSendProof ? (
+              <>
+                <PixQrCode orderCode={order.code} />
 
-            <div className="space-y-2 rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-700">
-              <p className="font-medium text-slate-950">
-                Instruções para o cliente
-              </p>
+                <div className="space-y-2 rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-700">
+                  <p className="font-medium text-slate-950">
+                    Instruções para o cliente
+                  </p>
 
-              <ol className="list-inside list-decimal space-y-1 leading-6">
-                <li>Faça o PIX no valor exato do pedido.</li>
-                <li>Informe o identificador {order.code} no comprovante.</li>
-                <li>Envie o comprovante pelo WhatsApp.</li>
-                <li>Aguarde a confirmação manual do administrador.</li>
-              </ol>
-            </div>
+                  <ol className="list-inside list-decimal space-y-1 leading-6">
+                    <li>
+                      Faça o PIX no valor de{" "}
+                      <strong>
+                        {formatCurrencyFromCents(amountToPayCents)}
+                      </strong>
+                      .
+                    </li>
+                    <li>
+                      Informe o identificador {order.code} no comprovante.
+                    </li>
+                    <li>Envie o comprovante pelo WhatsApp.</li>
+                    <li>Aguarde a confirmação manual do administrador.</li>
+                  </ol>
+                </div>
 
-            <a
-              className="button-primary w-full"
-              href={whatsappHref}
-              target="_blank"
-              rel="noreferrer"
-            >
-              Enviar comprovante
-            </a>
+                <a
+                  className="button-primary w-full"
+                  href={whatsappHref}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Enviar comprovante
+                </a>
+              </>
+            ) : (
+              <div className="rounded-2xl border border-slate-200 bg-white p-4 text-sm leading-6 text-slate-700">
+                Este pedido não possui valor pendente para pagamento via PIX no
+                momento.
+              </div>
+            )}
 
             <p className="text-xs leading-5 text-slate-500">
               O sistema não confirma PIX automaticamente neste MVP. O admin
