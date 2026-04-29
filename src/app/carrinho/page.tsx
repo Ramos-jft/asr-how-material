@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { ProductStatus } from "@prisma/client";
+
 import {
   clearCartAction,
   removeCartItemAction,
@@ -20,7 +21,53 @@ export const metadata: Metadata = {
     "Revise os produtos selecionados antes de avançar para o checkout da Material ASR HOW Brasil.",
 };
 
-export default async function CartPage() {
+type CartPageProps = Readonly<{
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
+}>;
+
+function getStringParam(
+  params: Record<string, string | string[] | undefined> | undefined,
+  key: string,
+): string {
+  const value = params?.[key];
+
+  if (Array.isArray(value)) {
+    return value[0]?.trim() ?? "";
+  }
+
+  return value?.trim() ?? "";
+}
+
+function AlertMessage({
+  type,
+  message,
+}: Readonly<{
+  type: "success" | "error";
+  message?: string;
+}>) {
+  if (!message) return null;
+
+  const className =
+    type === "success"
+      ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+      : "border-red-200 bg-red-50 text-red-700";
+
+  return (
+    <div
+      role="alert"
+      aria-live="polite"
+      className={`rounded-2xl border px-4 py-3 text-sm ${className}`}
+    >
+      {message}
+    </div>
+  );
+}
+
+export default async function CartPage({ searchParams }: CartPageProps) {
+  const params = await searchParams;
+  const successMessage = getStringParam(params, "sucesso");
+  const errorMessage = getStringParam(params, "erro");
+
   const cartItems = await getCartItems();
   const productIds = cartItems.map((item) => item.productId);
 
@@ -61,6 +108,12 @@ export default async function CartPage() {
   const productsById = new Map(
     products.map((product) => [product.id, product]),
   );
+
+  const unavailableItemsCount = cartItems.filter((cartItem) => {
+    const product = productsById.get(cartItem.productId);
+
+    return !product || product.stockCurrent <= 0;
+  }).length;
 
   const availableItems = cartItems
     .map((cartItem) => {
@@ -112,6 +165,18 @@ export default async function CartPage() {
             Continuar comprando
           </Link>
         </header>
+
+        <div className="space-y-3">
+          <AlertMessage type="success" message={successMessage} />
+          <AlertMessage type="error" message={errorMessage} />
+
+          {unavailableItemsCount > 0 ? (
+            <AlertMessage
+              type="error"
+              message={`${unavailableItemsCount} item(ns) do carrinho não estão mais disponíveis e não entram no resumo do pedido.`}
+            />
+          ) : null}
+        </div>
 
         {availableItems.length === 0 ? (
           <div className="mini-card space-y-4">
