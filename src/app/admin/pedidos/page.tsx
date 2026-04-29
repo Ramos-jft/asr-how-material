@@ -5,6 +5,7 @@ import { OrderStatus, PaymentStatus } from "@prisma/client";
 import {
   cancelOrderAndReleaseStockAction,
   confirmPixPaymentAction,
+  updateOrderStatusAction,
 } from "@/app/admin/pedidos/actions";
 import { requirePermission } from "@/lib/auth/guards";
 import { hasPermission, PERMISSIONS } from "@/lib/auth/permissions";
@@ -93,6 +94,21 @@ function canCancelAndReleaseStock(status: OrderStatus): boolean {
   return status === OrderStatus.AWAITING_PAYMENT;
 }
 
+function canMarkAsShipped(status: OrderStatus): boolean {
+  return status === OrderStatus.PAID_CONFIRMED;
+}
+
+function canMarkAsCompleted(input: {
+  status: OrderStatus;
+  source: string;
+}): boolean {
+  if (input.status === OrderStatus.SHIPPED) {
+    return true;
+  }
+
+  return input.status === OrderStatus.PAID_CONFIRMED && input.source === "PDV";
+}
+
 function OrderStatusBadge({ status }: Readonly<{ status: OrderStatus }>) {
   return (
     <span
@@ -126,6 +142,11 @@ export default async function AdminPedidosPage({
   const canCancelRelease = hasPermission(
     auth.permissions,
     PERMISSIONS.ORDERS_CANCEL_RELEASE,
+  );
+
+  const canUpdateOrderStatus = hasPermission(
+    auth.permissions,
+    PERMISSIONS.ORDERS_UPDATE_STATUS,
   );
 
   const [orders, statusCounts] = await Promise.all([
@@ -263,6 +284,16 @@ export default async function AdminPedidosPage({
 
             const shouldShowCancelForm =
               canCancelRelease && canCancelAndReleaseStock(order.status);
+
+            const shouldShowShipForm =
+              canUpdateOrderStatus && canMarkAsShipped(order.status);
+
+            const shouldShowCompleteForm =
+              canUpdateOrderStatus &&
+              canMarkAsCompleted({
+                status: order.status,
+                source: order.source,
+              });
 
             return (
               <article
@@ -487,6 +518,105 @@ export default async function AdminPedidosPage({
                         </div>
                       )}
                     </section>
+
+                    {shouldShowShipForm ? (
+                      <form
+                        action={updateOrderStatusAction}
+                        className="rounded-2xl border border-blue-200 bg-blue-50 p-4"
+                      >
+                        <input type="hidden" name="orderId" value={order.id} />
+                        <input
+                          type="hidden"
+                          name="nextStatus"
+                          value="SHIPPED"
+                        />
+
+                        <h4 className="font-semibold text-blue-950">
+                          Marcar pedido como enviado
+                        </h4>
+
+                        <p className="mt-2 text-sm leading-6 text-blue-800">
+                          Use esta ação quando o pedido pago já foi separado e
+                          enviado.
+                        </p>
+
+                        <div className="mt-4 space-y-2">
+                          <label
+                            className="field-label text-blue-950"
+                            htmlFor={`ship-notes-${order.id}`}
+                          >
+                            Observação interna
+                          </label>
+
+                          <textarea
+                            id={`ship-notes-${order.id}`}
+                            name="notes"
+                            className="field-input min-h-24 bg-white"
+                            placeholder="Ex.: pedido entregue ao responsável pelo envio."
+                          />
+                        </div>
+
+                        <button
+                          type="submit"
+                          className="mt-4 w-full rounded-full bg-blue-800 px-4 py-3 text-sm font-semibold text-white transition hover:bg-blue-900"
+                        >
+                          Marcar como enviado
+                        </button>
+                      </form>
+                    ) : null}
+
+                    {shouldShowCompleteForm ? (
+                      <form
+                        action={updateOrderStatusAction}
+                        className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4"
+                      >
+                        <input type="hidden" name="orderId" value={order.id} />
+                        <input
+                          type="hidden"
+                          name="nextStatus"
+                          value="COMPLETED"
+                        />
+
+                        <h4 className="font-semibold text-emerald-950">
+                          Marcar pedido como concluído
+                        </h4>
+
+                        <p className="mt-2 text-sm leading-6 text-emerald-800">
+                          Use esta ação quando o pedido foi entregue/finalizado.
+                          Vendas PDV pagas podem ser concluídas diretamente.
+                        </p>
+
+                        <div className="mt-4 space-y-2">
+                          <label
+                            className="field-label text-emerald-950"
+                            htmlFor={`complete-notes-${order.id}`}
+                          >
+                            Observação interna
+                          </label>
+
+                          <textarea
+                            id={`complete-notes-${order.id}`}
+                            name="notes"
+                            className="field-input min-h-24 bg-white"
+                            placeholder="Ex.: pedido entregue e encerrado."
+                          />
+                        </div>
+
+                        <button
+                          type="submit"
+                          className="mt-4 w-full rounded-full bg-emerald-700 px-4 py-3 text-sm font-semibold text-white transition hover:bg-emerald-800"
+                        >
+                          Marcar como concluído
+                        </button>
+                      </form>
+                    ) : null}
+
+                    {canUpdateOrderStatus ? null : (
+                      <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm leading-6 text-slate-600">
+                        Seu usuário pode visualizar pedidos, mas não possui
+                        permissão para alterar status operacional.
+                      </div>
+                    )}
 
                     {shouldShowCancelForm ? (
                       <form

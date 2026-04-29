@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import {
+  OrderSource,
   OrderStatus,
   PaymentMethod,
   PaymentStatus,
@@ -25,6 +26,14 @@ const confirmPixPaymentSchema = z.object({
 const cancelOrderSchema = z.object({
   orderId: z.string().min(1, "Pedido inválido."),
   reason: z.string().trim().optional(),
+});
+
+const updateOrderStatusSchema = z.object({
+  orderId: z.string().min(1, "Pedido inválido."),
+  nextStatus: z.enum(["SHIPPED", "COMPLETED"], {
+    message: "Status de destino inválido.",
+  }),
+  notes: z.string().trim().optional(),
 });
 
 const confirmableOrderStatuses = new Set<OrderStatus>([
@@ -92,6 +101,63 @@ function buildCancellationNotes(input: {
     .join(" ");
 
   return [input.currentNotes, cancellationNote].filter(Boolean).join("\n\n");
+}
+
+function buildStatusUpdateNotes(input: {
+  currentNotes: string | null;
+  nextStatus: OrderStatus;
+  notes: string | null;
+  userName: string;
+  date: Date;
+}): string {
+  const formattedDate = new Intl.DateTimeFormat("pt-BR", {
+    dateStyle: "short",
+    timeStyle: "short",
+  }).format(input.date);
+
+  const statusText =
+    input.nextStatus === OrderStatus.SHIPPED
+      ? "marcado como enviado"
+      : "marcado como concluído";
+
+  const statusNote = [
+    `Pedido ${statusText} por ${input.userName} em ${formattedDate}.`,
+    input.notes ? `Observação: ${input.notes}` : null,
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  return [input.currentNotes, statusNote].filter(Boolean).join("\n\n");
+}
+
+function assertValidOrderStatusTransition(input: {
+  currentStatus: OrderStatus;
+  nextStatus: OrderStatus;
+  source: OrderSource;
+}): void {
+  if (
+    input.nextStatus === OrderStatus.SHIPPED &&
+    input.currentStatus === OrderStatus.PAID_CONFIRMED
+  ) {
+    return;
+  }
+
+  if (
+    input.nextStatus === OrderStatus.COMPLETED &&
+    input.currentStatus === OrderStatus.SHIPPED
+  ) {
+    return;
+  }
+
+  if (
+    input.nextStatus === OrderStatus.COMPLETED &&
+    input.currentStatus === OrderStatus.PAID_CONFIRMED &&
+    input.source === OrderSource.PDV
+  ) {
+    return;
+  }
+
+  throw new Error("Transição de status não permitida para este pedido.");
 }
 
 export async function confirmPixPaymentAction(formData: FormData) {
@@ -198,6 +264,8 @@ export async function confirmPixPaymentAction(formData: FormData) {
 
   revalidatePath("/admin");
   revalidatePath("/admin/pedidos");
+  revalidatePath("/admin/relatorios");
+  revalidatePath("/pedidos");
 }
 
 export async function cancelOrderAndReleaseStockAction(
@@ -360,4 +428,95 @@ export async function cancelOrderAndReleaseStockAction(
   revalidatePath("/admin");
   revalidatePath("/admin/pedidos");
   revalidatePath("/admin/estoque");
+  revalidatePath("/admin/produtos");
+  revalidatePath("/admin/relatorios");
+  revalidatePath("/pedidos");
+}
+
+export async function updateOrderStatusAction(
+  formData: FormData,
+): Promise<void> {
+  const auth = await requirePermission(PERMISSIONS.ORDERS_UPDATE_STATUS);
+
+  const parsed = updateOrderStatusSchema.safeParse({
+    orderId: formData.get("orderId"),
+    nextStatus: formData.get("nextStatus"),
+    notes: formData.get("notes"),
+  });
+
+  if (!parsed.success) {
+    throw new Error(
+      parsed.error.issues[0]?.message ?? "Dados de status inválidos.",
+    );
+  }
+
+  const nextStatus =
+    parsed.data.nextStatus === "SHIPPED"
+      ? OrderStatus.SHIPPED
+      : OrderStatus.COMPLETED;
+
+  const notes = parsed.data.notes?.trim() || null;
+  const now = new Date();
+
+  await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+    const order = await tx.order.findUnique({
+      where: {
+        id: parsed.data.orderId,
+      },
+      select: {
+        id: true,
+        code: true,
+        source: true,
+        status: true,
+        notes: true,
+      },
+    });
+
+    if (!order) {
+      throw new Error("Pedido não encontrado.");
+    }
+
+    assertValidOrderStatusTransition({
+      currentStatus: order.status,
+      nextStatus,
+      source: order.source,
+    });
+
+    await tx.order.update({
+      where: {
+        id: order.id,
+      },
+      data: {
+        status: nextStatus,
+        notes: buildStatusUpdateNotes({
+          currentNotes: order.notes,
+          nextStatus,
+          notes,
+          userName: auth.user.name,
+          date: now,
+        }),
+      },
+    });
+
+    await tx.auditLog.create({
+      data: {
+        userId: auth.user.id,
+        action: "order.update_status",
+        entity: "Order",
+        entityId: order.id,
+        payload: {
+          orderCode: order.code,
+          source: order.source,
+          previousStatus: order.status,
+          nextStatus,
+          notes,
+        },
+      },
+    });
+  });
+
+  revalidatePath("/admin");
+  revalidatePath("/admin/pedidos");
+  revalidatePath("/admin/relatorios");
+  revalidatePath("/pedidos");
 }
