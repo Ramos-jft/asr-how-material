@@ -68,10 +68,9 @@ function isOrderStatus(value: string | undefined): value is OrderStatus {
   return orderStatusOptions.includes(value as OrderStatus);
 }
 
-async function getSelectedStatus(
-  searchParams?: Promise<Record<string, string | string[] | undefined>>,
-): Promise<OrderStatus | null> {
-  const params = await searchParams;
+function getSelectedStatus(
+  params: Record<string, string | string[] | undefined> | undefined,
+): OrderStatus | null {
   const rawStatus = Array.isArray(params?.status)
     ? params.status[0]
     : params?.status;
@@ -119,6 +118,44 @@ function OrderStatusBadge({ status }: Readonly<{ status: OrderStatus }>) {
   );
 }
 
+function getStringParam(
+  params: Record<string, string | string[] | undefined> | undefined,
+  key: string,
+): string {
+  const value = params?.[key];
+
+  if (Array.isArray(value)) {
+    return value[0]?.trim() ?? "";
+  }
+
+  return value?.trim() ?? "";
+}
+
+function AlertMessage({
+  type,
+  message,
+}: Readonly<{
+  type: "success" | "error";
+  message?: string;
+}>) {
+  if (!message) return null;
+
+  const className =
+    type === "success"
+      ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+      : "border-red-200 bg-red-50 text-red-700";
+
+  return (
+    <div
+      role="alert"
+      aria-live="polite"
+      className={`rounded-2xl border px-4 py-3 text-sm ${className}`}
+    >
+      {message}
+    </div>
+  );
+}
+
 function getConfirmedPaymentsTotal(
   payments: ReadonlyArray<{ receivedAmountCents: number }>,
 ): number {
@@ -132,7 +169,11 @@ export default async function AdminPedidosPage({
   searchParams,
 }: AdminPedidosPageProps) {
   const auth = await requirePermission(PERMISSIONS.ORDERS_READ);
-  const selectedStatus = await getSelectedStatus(searchParams);
+  const params = await searchParams;
+  const selectedStatus = getSelectedStatus(params);
+
+  const successMessage = getStringParam(params, "sucesso");
+  const errorMessage = getStringParam(params, "erro");
 
   const canConfirmPix = hasPermission(
     auth.permissions,
@@ -229,6 +270,11 @@ export default async function AdminPedidosPage({
           </p>
         </div>
       </header>
+
+      <div className="space-y-3">
+        <AlertMessage type="success" message={successMessage} />
+        <AlertMessage type="error" message={errorMessage} />
+      </div>
 
       <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
         <h3 className="text-sm font-semibold uppercase tracking-[0.25em] text-slate-500">

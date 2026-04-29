@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import {
   OrderSource,
   OrderStatus,
@@ -44,6 +45,17 @@ const confirmableOrderStatuses = new Set<OrderStatus>([
 const cancellableOrderStatuses = new Set<OrderStatus>([
   OrderStatus.AWAITING_PAYMENT,
 ]);
+
+function redirectToOrdersMessage(input: {
+  type: "sucesso" | "erro";
+  message: string;
+}): never {
+  const params = new URLSearchParams({
+    [input.type]: input.message,
+  });
+
+  redirect(`/admin/pedidos?${params.toString()}`);
+}
 
 function parseCurrencyToCents(value: string): number {
   const normalized = value.trim().replaceAll(/[R$\s]/g, "");
@@ -160,7 +172,24 @@ function assertValidOrderStatusTransition(input: {
   throw new Error("Transição de status não permitida para este pedido.");
 }
 
-export async function confirmPixPaymentAction(formData: FormData) {
+function getErrorMessage(error: unknown, fallback: string): string {
+  if (error instanceof Error && error.message.trim()) {
+    return error.message;
+  }
+
+  return fallback;
+}
+
+function revalidateOrdersViews(): void {
+  revalidatePath("/admin");
+  revalidatePath("/admin/pedidos");
+  revalidatePath("/admin/relatorios");
+  revalidatePath("/pedidos");
+}
+
+export async function confirmPixPaymentAction(
+  formData: FormData,
+): Promise<void> {
   const auth = await requirePermission(PERMISSIONS.PAYMENTS_CONFIRM_PIX);
 
   const rawNotes = formData.get("notes");
@@ -172,100 +201,116 @@ export async function confirmPixPaymentAction(formData: FormData) {
   });
 
   if (!parsed.success) {
-    throw new Error(
-      parsed.error.issues[0]?.message ?? "Dados de pagamento inválidos.",
-    );
+    redirectToOrdersMessage({
+      type: "erro",
+      message:
+        parsed.error.issues[0]?.message ?? "Dados de pagamento inválidos.",
+    });
   }
 
-  const receivedAmountCents = parseCurrencyToCents(parsed.data.receivedAmount);
-  const notes = parsed.data.notes?.trim() || null;
+  try {
+    const receivedAmountCents = parseCurrencyToCents(
+      parsed.data.receivedAmount,
+    );
+    const notes = parsed.data.notes?.trim() || null;
 
-  await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-    const order = await tx.order.findUnique({
-      where: {
-        id: parsed.data.orderId,
-      },
-      include: {
-        payments: {
-          where: {
-            status: PaymentStatus.CONFIRMED,
-          },
-          select: {
-            receivedAmountCents: true,
+    await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      const order = await tx.order.findUnique({
+        where: {
+          id: parsed.data.orderId,
+        },
+        include: {
+          payments: {
+            where: {
+              status: PaymentStatus.CONFIRMED,
+            },
+            select: {
+              receivedAmountCents: true,
+            },
           },
         },
-      },
-    });
+      });
 
-    if (!order) {
-      throw new Error("Pedido não encontrado.");
-    }
+      if (!order) {
+        throw new Error("Pedido não encontrado.");
+      }
 
-    if (!confirmableOrderStatuses.has(order.status)) {
-      throw new Error(
-        "Somente pedidos aguardando pagamento ou pendentes de complemento podem receber confirmação de PIX.",
-      );
-    }
+      if (!confirmableOrderStatuses.has(order.status)) {
+        throw new Error(
+          "Somente pedidos aguardando pagamento ou pendentes de complemento podem receber confirmação de PIX.",
+        );
+      }
 
-    const previouslyReceivedCents = sumConfirmedPayments(order.payments);
+      const previouslyReceivedCents = sumConfirmedPayments(order.payments);
 
-    const resolution = resolvePaymentConfirmation({
-      totalDueCents: order.totalDueCents,
-      receivedAmountCents,
-      previouslyReceivedCents,
-    });
-
-    const now = new Date();
-    const nextStatus = getPaymentOrderStatus(resolution.nextStatus);
-
-    await tx.payment.create({
-      data: {
-        orderId: order.id,
-        method: PaymentMethod.PIX,
-        status: PaymentStatus.CONFIRMED,
+      const resolution = resolvePaymentConfirmation({
+        totalDueCents: order.totalDueCents,
         receivedAmountCents,
-        differenceCents: resolution.additionalDueCents,
-        notes,
-        confirmedByUserId: auth.user.id,
-        confirmedAt: now,
-      },
-    });
+        previouslyReceivedCents,
+      });
 
-    await tx.order.update({
-      where: {
-        id: order.id,
-      },
-      data: {
-        status: nextStatus,
-        additionalDueCents: resolution.additionalDueCents,
-        paidAt: resolution.isFullyPaid ? now : null,
-      },
-    });
+      const now = new Date();
+      const nextStatus = getPaymentOrderStatus(resolution.nextStatus);
 
-    await tx.auditLog.create({
-      data: {
-        userId: auth.user.id,
-        action: "payment.confirm_pix",
-        entity: "Order",
-        entityId: order.id,
-        payload: {
-          orderCode: order.code,
-          previousStatus: order.status,
-          nextStatus,
+      await tx.payment.create({
+        data: {
+          orderId: order.id,
+          method: PaymentMethod.PIX,
+          status: PaymentStatus.CONFIRMED,
           receivedAmountCents,
-          previouslyReceivedCents,
-          totalReceivedCents: resolution.totalReceivedCents,
-          totalDueCents: order.totalDueCents,
-          additionalDueCents: resolution.additionalDueCents,
+          differenceCents: resolution.additionalDueCents,
+          notes,
+          confirmedByUserId: auth.user.id,
+          confirmedAt: now,
         },
-      },
-    });
-  });
+      });
 
-  revalidatePath("/admin");
-  revalidatePath("/admin/pedidos");
-  revalidatePath("/admin/relatorios");
-  revalidatePath("/pedidos");
+      await tx.order.update({
+        where: {
+          id: order.id,
+        },
+        data: {
+          status: nextStatus,
+          additionalDueCents: resolution.additionalDueCents,
+          paidAt: resolution.isFullyPaid ? now : null,
+        },
+      });
+
+      await tx.auditLog.create({
+        data: {
+          userId: auth.user.id,
+          action: "payment.confirm_pix",
+          entity: "Order",
+          entityId: order.id,
+          payload: {
+            orderCode: order.code,
+            previousStatus: order.status,
+            nextStatus,
+            receivedAmountCents,
+            previouslyReceivedCents,
+            totalReceivedCents: resolution.totalReceivedCents,
+            totalDueCents: order.totalDueCents,
+            additionalDueCents: resolution.additionalDueCents,
+          },
+        },
+      });
+    });
+  } catch (error) {
+    redirectToOrdersMessage({
+      type: "erro",
+      message: getErrorMessage(
+        error,
+        "Não foi possível confirmar o pagamento PIX.",
+      ),
+    });
+  }
+
+  revalidateOrdersViews();
+
+  redirectToOrdersMessage({
+    type: "sucesso",
+    message: "Pagamento PIX confirmado com sucesso.",
+  });
 }
 
 export async function cancelOrderAndReleaseStockAction(
@@ -279,151 +324,163 @@ export async function cancelOrderAndReleaseStockAction(
   });
 
   if (!parsed.success) {
-    throw new Error(
-      parsed.error.issues[0]?.message ?? "Dados de cancelamento inválidos.",
-    );
+    redirectToOrdersMessage({
+      type: "erro",
+      message:
+        parsed.error.issues[0]?.message ?? "Dados de cancelamento inválidos.",
+    });
   }
 
   const reason = parsed.data.reason?.trim() || null;
   const now = new Date();
 
-  await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-    const order = await tx.order.findUnique({
-      where: {
-        id: parsed.data.orderId,
-      },
-      include: {
-        items: {
-          select: {
-            id: true,
-            productId: true,
-            name: true,
-            quantity: true,
+  try {
+    await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      const order = await tx.order.findUnique({
+        where: {
+          id: parsed.data.orderId,
+        },
+        include: {
+          items: {
+            select: {
+              id: true,
+              productId: true,
+              name: true,
+              quantity: true,
+            },
+          },
+          payments: {
+            where: {
+              status: PaymentStatus.CONFIRMED,
+            },
+            select: {
+              id: true,
+            },
           },
         },
-        payments: {
+      });
+
+      if (!order) {
+        throw new Error("Pedido não encontrado.");
+      }
+
+      if (!cancellableOrderStatuses.has(order.status)) {
+        throw new Error(
+          "Somente pedidos aguardando pagamento podem ser cancelados com liberação automática de estoque.",
+        );
+      }
+
+      if (order.payments.length > 0) {
+        throw new Error(
+          "Este pedido possui pagamento confirmado. Resolva manualmente antes de cancelar.",
+        );
+      }
+
+      for (const item of order.items) {
+        if (!item.productId) {
+          continue;
+        }
+
+        const product = await tx.product.findUnique({
           where: {
-            status: PaymentStatus.CONFIRMED,
+            id: item.productId,
           },
           select: {
             id: true,
+            stockCurrent: true,
+            status: true,
+            isActive: true,
           },
-        },
-      },
-    });
+        });
 
-    if (!order) {
-      throw new Error("Pedido não encontrado.");
-    }
+        if (!product) {
+          continue;
+        }
 
-    if (!cancellableOrderStatuses.has(order.status)) {
-      throw new Error(
-        "Somente pedidos aguardando pagamento podem ser cancelados com liberação automática de estoque.",
-      );
-    }
+        const previousStock = product.stockCurrent;
+        const newStock = previousStock + item.quantity;
 
-    if (order.payments.length > 0) {
-      throw new Error(
-        "Este pedido possui pagamento confirmado. Resolva manualmente antes de cancelar.",
-      );
-    }
-
-    for (const item of order.items) {
-      if (!item.productId) {
-        continue;
-      }
-
-      const product = await tx.product.findUnique({
-        where: {
-          id: item.productId,
-        },
-        select: {
-          id: true,
-          stockCurrent: true,
-          status: true,
-          isActive: true,
-        },
-      });
-
-      if (!product) {
-        continue;
-      }
-
-      const previousStock = product.stockCurrent;
-      const newStock = previousStock + item.quantity;
-
-      await tx.product.update({
-        where: {
-          id: product.id,
-        },
-        data: {
-          stockCurrent: {
-            increment: item.quantity,
+        await tx.product.update({
+          where: {
+            id: product.id,
           },
-          status:
-            product.isActive && product.status === ProductStatus.OUT_OF_STOCK
-              ? ProductStatus.ACTIVE
-              : product.status,
-        },
-      });
-
-      await tx.stockMovement.create({
-        data: {
-          productId: product.id,
-          orderId: order.id,
-          userId: auth.user.id,
-          type: StockMovementType.CANCEL_RELEASE,
-          quantity: item.quantity,
-          previousStock,
-          newStock,
-          reason: `Liberação de estoque por cancelamento do pedido ${order.code}`,
-          metadata: {
-            orderCode: order.code,
-            orderItemId: item.id,
-            productName: item.name,
-            source: "admin_order_cancel",
+          data: {
+            stockCurrent: {
+              increment: item.quantity,
+            },
+            status:
+              product.isActive && product.status === ProductStatus.OUT_OF_STOCK
+                ? ProductStatus.ACTIVE
+                : product.status,
           },
-        },
-      });
-    }
+        });
 
-    await tx.order.update({
-      where: {
-        id: order.id,
-      },
-      data: {
-        status: OrderStatus.CANCELLED,
-        cancelledAt: now,
-        notes: buildCancellationNotes({
-          currentNotes: order.notes,
-          reason,
-          userName: auth.user.name,
-          date: now,
-        }),
-      },
-    });
-
-    await tx.auditLog.create({
-      data: {
-        userId: auth.user.id,
-        action: "order.cancel_release_stock",
-        entity: "Order",
-        entityId: order.id,
-        payload: {
-          orderCode: order.code,
-          previousStatus: order.status,
-          nextStatus: OrderStatus.CANCELLED,
-          reason,
-          releasedItems: order.items.map((item) => ({
-            orderItemId: item.id,
-            productId: item.productId,
-            name: item.name,
+        await tx.stockMovement.create({
+          data: {
+            productId: product.id,
+            orderId: order.id,
+            userId: auth.user.id,
+            type: StockMovementType.CANCEL_RELEASE,
             quantity: item.quantity,
-          })),
+            previousStock,
+            newStock,
+            reason: `Liberação de estoque por cancelamento do pedido ${order.code}`,
+            metadata: {
+              orderCode: order.code,
+              orderItemId: item.id,
+              productName: item.name,
+              source: "admin_order_cancel",
+            },
+          },
+        });
+      }
+
+      await tx.order.update({
+        where: {
+          id: order.id,
         },
-      },
+        data: {
+          status: OrderStatus.CANCELLED,
+          cancelledAt: now,
+          notes: buildCancellationNotes({
+            currentNotes: order.notes,
+            reason,
+            userName: auth.user.name,
+            date: now,
+          }),
+        },
+      });
+
+      await tx.auditLog.create({
+        data: {
+          userId: auth.user.id,
+          action: "order.cancel_release_stock",
+          entity: "Order",
+          entityId: order.id,
+          payload: {
+            orderCode: order.code,
+            previousStatus: order.status,
+            nextStatus: OrderStatus.CANCELLED,
+            reason,
+            releasedItems: order.items.map((item) => ({
+              orderItemId: item.id,
+              productId: item.productId,
+              name: item.name,
+              quantity: item.quantity,
+            })),
+          },
+        },
+      });
     });
-  });
+  } catch (error) {
+    redirectToOrdersMessage({
+      type: "erro",
+      message: getErrorMessage(
+        error,
+        "Não foi possível cancelar o pedido e liberar estoque.",
+      ),
+    });
+  }
 
   revalidatePath("/admin");
   revalidatePath("/admin/pedidos");
@@ -431,6 +488,11 @@ export async function cancelOrderAndReleaseStockAction(
   revalidatePath("/admin/produtos");
   revalidatePath("/admin/relatorios");
   revalidatePath("/pedidos");
+
+  redirectToOrdersMessage({
+    type: "sucesso",
+    message: "Pedido cancelado e estoque liberado com sucesso.",
+  });
 }
 
 export async function updateOrderStatusAction(
@@ -445,9 +507,10 @@ export async function updateOrderStatusAction(
   });
 
   if (!parsed.success) {
-    throw new Error(
-      parsed.error.issues[0]?.message ?? "Dados de status inválidos.",
-    );
+    redirectToOrdersMessage({
+      type: "erro",
+      message: parsed.error.issues[0]?.message ?? "Dados de status inválidos.",
+    });
   }
 
   const nextStatus =
@@ -458,65 +521,77 @@ export async function updateOrderStatusAction(
   const notes = parsed.data.notes?.trim() || null;
   const now = new Date();
 
-  await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-    const order = await tx.order.findUnique({
-      where: {
-        id: parsed.data.orderId,
-      },
-      select: {
-        id: true,
-        code: true,
-        source: true,
-        status: true,
-        notes: true,
-      },
-    });
-
-    if (!order) {
-      throw new Error("Pedido não encontrado.");
-    }
-
-    assertValidOrderStatusTransition({
-      currentStatus: order.status,
-      nextStatus,
-      source: order.source,
-    });
-
-    await tx.order.update({
-      where: {
-        id: order.id,
-      },
-      data: {
-        status: nextStatus,
-        notes: buildStatusUpdateNotes({
-          currentNotes: order.notes,
-          nextStatus,
-          notes,
-          userName: auth.user.name,
-          date: now,
-        }),
-      },
-    });
-
-    await tx.auditLog.create({
-      data: {
-        userId: auth.user.id,
-        action: "order.update_status",
-        entity: "Order",
-        entityId: order.id,
-        payload: {
-          orderCode: order.code,
-          source: order.source,
-          previousStatus: order.status,
-          nextStatus,
-          notes,
+  try {
+    await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      const order = await tx.order.findUnique({
+        where: {
+          id: parsed.data.orderId,
         },
-      },
-    });
-  });
+        select: {
+          id: true,
+          code: true,
+          source: true,
+          status: true,
+          notes: true,
+        },
+      });
 
-  revalidatePath("/admin");
-  revalidatePath("/admin/pedidos");
-  revalidatePath("/admin/relatorios");
-  revalidatePath("/pedidos");
+      if (!order) {
+        throw new Error("Pedido não encontrado.");
+      }
+
+      assertValidOrderStatusTransition({
+        currentStatus: order.status,
+        nextStatus,
+        source: order.source,
+      });
+
+      await tx.order.update({
+        where: {
+          id: order.id,
+        },
+        data: {
+          status: nextStatus,
+          notes: buildStatusUpdateNotes({
+            currentNotes: order.notes,
+            nextStatus,
+            notes,
+            userName: auth.user.name,
+            date: now,
+          }),
+        },
+      });
+
+      await tx.auditLog.create({
+        data: {
+          userId: auth.user.id,
+          action: "order.update_status",
+          entity: "Order",
+          entityId: order.id,
+          payload: {
+            orderCode: order.code,
+            source: order.source,
+            previousStatus: order.status,
+            nextStatus,
+            notes,
+          },
+        },
+      });
+    });
+  } catch (error) {
+    redirectToOrdersMessage({
+      type: "erro",
+      message: getErrorMessage(
+        error,
+        "Não foi possível atualizar o status do pedido.",
+      ),
+    });
+  }
+
+  revalidateOrdersViews();
+
+  redirectToOrdersMessage({
+    type: "sucesso",
+    message: "Status do pedido atualizado com sucesso.",
+  });
 }
