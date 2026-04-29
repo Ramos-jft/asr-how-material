@@ -6,6 +6,7 @@ import { clearSession, getSession } from "@/lib/auth/session";
 import {
   hasPermission,
   PERMISSIONS,
+  ROLES,
   type PermissionName,
 } from "@/lib/auth/permissions";
 import { prisma } from "@/lib/prisma";
@@ -18,6 +19,20 @@ export function getAuthenticatedRedirectPath(
   }
 
   return "/catalogo";
+}
+
+function isAdminSession(permissions: readonly string[]): boolean {
+  return hasPermission(permissions, PERMISSIONS.DASHBOARD_READ);
+}
+
+function isBuyerSession(input: {
+  roles: readonly string[];
+  permissions: readonly string[];
+}): boolean {
+  return (
+    input.roles.includes(ROLES.CUSTOMER) &&
+    !hasPermission(input.permissions, PERMISSIONS.DASHBOARD_READ)
+  );
 }
 
 export async function requireAuth() {
@@ -80,10 +95,60 @@ export async function requirePermission(permission: PermissionName) {
   return auth;
 }
 
+export async function requireBuyerAccess() {
+  const session = await getSession();
+
+  if (!session?.sub) {
+    redirect("/login/comprador");
+  }
+
+  const auth = await requireAuth();
+
+  const canAccessBuyerArea = isBuyerSession({
+    roles: auth.roles,
+    permissions: auth.permissions,
+  });
+
+  if (!canAccessBuyerArea) {
+    redirect("/acesso-negado");
+  }
+
+  return auth;
+}
+
 export async function requireGuest() {
   const session = await getSession();
 
   if (session?.sub) {
     redirect(getAuthenticatedRedirectPath(session.permissions));
   }
+}
+
+export async function requireGuestForLoginIntent(
+  intent: "admin" | "buyer",
+): Promise<void> {
+  const session = await getSession();
+
+  if (!session?.sub) {
+    return;
+  }
+
+  if (intent === "admin") {
+    if (isAdminSession(session.permissions)) {
+      redirect("/admin");
+    }
+
+    redirect("/acesso-negado");
+  }
+
+  if (
+    isBuyerSession({
+      roles: session.roles,
+      permissions: session.permissions,
+    })
+  ) {
+    redirect("/catalogo");
+  }
+
+  redirect("/acesso-negado");
 }

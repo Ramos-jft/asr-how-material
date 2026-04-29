@@ -12,6 +12,7 @@ type LoginFormProps = Readonly<{
   submitLabel?: string;
   pendingLabel?: string;
   emailPlaceholder?: string;
+  loginIntent?: "admin" | "buyer";
 }>;
 
 export function LoginForm({
@@ -20,6 +21,7 @@ export function LoginForm({
   submitLabel = "Entrar",
   pendingLabel = "Entrando...",
   emailPlaceholder = "email@exemplo.com",
+  loginIntent,
 }: LoginFormProps) {
   const [state, formAction, isPending] = useActionState(
     loginAction,
@@ -28,6 +30,10 @@ export function LoginForm({
 
   return (
     <form action={formAction} className="panel panel-tight space-y-5">
+      {loginIntent ? (
+        <input type="hidden" name="loginIntent" value={loginIntent} />
+      ) : null}
+
       <div className="space-y-2">
         <h2 className="text-xl font-semibold text-slate-950">{title}</h2>
 

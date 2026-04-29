@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 
 import { logoutAction } from "@/app/actions/logout";
 import { BackButton } from "@/components/navigation/BackButton";
+import { requireBuyerAccess } from "@/lib/auth/guards";
 
 const buyerLinks = [
   {
@@ -32,7 +33,9 @@ type BuyerShellProps = Readonly<{
   children: ReactNode;
 }>;
 
-export default function BuyerShell({ children }: BuyerShellProps) {
+export default async function BuyerShell({ children }: BuyerShellProps) {
+  const auth = await requireBuyerAccess();
+
   return (
     <section className="min-h-screen bg-slate-100">
       <header className="border-b border-slate-200 bg-white">
@@ -68,6 +71,8 @@ export default function BuyerShell({ children }: BuyerShellProps) {
               <h1 className="mt-1 text-xl font-bold tracking-tight text-slate-950">
                 Material ASR HOW Brasil
               </h1>
+
+              <p className="mt-1 text-sm text-slate-600">{auth.user.name}</p>
             </div>
 
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center">

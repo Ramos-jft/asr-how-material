@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import { getAuthenticatedRedirectPath } from "@/lib/auth/guards";
+import { hasPermission, PERMISSIONS, ROLES } from "@/lib/auth/permissions";
 import { createSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 
@@ -21,7 +22,31 @@ const emailSchema = z
 const loginSchema = z.object({
   email: emailSchema,
   password: z.string().min(6, "A senha deve ter pelo menos 6 caracteres."),
+  loginIntent: z.enum(["admin", "buyer"]).optional(),
 });
+
+function getOptionalString(
+  formData: FormData,
+  field: string,
+): string | undefined {
+  const value = formData.get(field);
+
+  return typeof value === "string" && value.trim() ? value.trim() : undefined;
+}
+
+function isAdminLoginAllowed(permissions: readonly string[]): boolean {
+  return hasPermission(permissions, PERMISSIONS.DASHBOARD_READ);
+}
+
+function isBuyerLoginAllowed(input: {
+  roles: readonly string[];
+  permissions: readonly string[];
+}): boolean {
+  return (
+    input.roles.includes(ROLES.CUSTOMER) &&
+    !hasPermission(input.permissions, PERMISSIONS.DASHBOARD_READ)
+  );
+}
 
 export async function loginAction(
   _previousState: LoginFormState,
@@ -30,6 +55,7 @@ export async function loginAction(
   const parsed = loginSchema.safeParse({
     email: formData.get("email"),
     password: formData.get("password"),
+    loginIntent: getOptionalString(formData, "loginIntent"),
   });
 
   if (!parsed.success) {
@@ -80,6 +106,26 @@ export async function loginAction(
       ),
     ),
   );
+
+  if (
+    parsed.data.loginIntent === "admin" &&
+    !isAdminLoginAllowed(permissions)
+  ) {
+    return {
+      error:
+        "Este usuário não possui permissão administrativa. Use o acesso de comprador.",
+    };
+  }
+
+  if (
+    parsed.data.loginIntent === "buyer" &&
+    !isBuyerLoginAllowed({ roles, permissions })
+  ) {
+    return {
+      error:
+        "Este usuário não é um comprador. Use o acesso administrativo ou solicite liberação.",
+    };
+  }
 
   await prisma.user.update({
     where: { id: user.id },

@@ -3,7 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 
 import { LoginForm } from "@/app/login/LoginForm";
-import { requireGuest } from "@/lib/auth/guards";
+import { requireGuestForLoginIntent } from "@/lib/auth/guards";
 
 export const metadata: Metadata = {
   title: "Entrar como comprador | Material ASR HOW Brasil",
@@ -46,7 +46,7 @@ function AlertMessage({
 export default async function BuyerLoginPage({
   searchParams,
 }: BuyerLoginPageProps) {
-  await requireGuest();
+  await requireGuestForLoginIntent("buyer");
 
   const params = await searchParams;
 
@@ -74,9 +74,8 @@ export default async function BuyerLoginPage({
               </h1>
 
               <p className="max-w-2xl text-base leading-7 text-slate-600">
-                Use esta entrada para acessar o catálogo, revisar carrinho,
-                finalizar pedidos, consultar pagamentos e acompanhar seus
-                pedidos.
+                Use esta entrada somente para catálogo, carrinho, checkout,
+                pagamento e acompanhamento dos seus pedidos.
               </p>
             </div>
           </div>
@@ -108,10 +107,6 @@ export default async function BuyerLoginPage({
             <Link className="button-secondary" href="/">
               Voltar ao início
             </Link>
-
-            <Link className="button-secondary" href="/catalogo">
-              Ver catálogo
-            </Link>
           </div>
         </div>
 
@@ -121,10 +116,11 @@ export default async function BuyerLoginPage({
 
           <LoginForm
             title="Acesso do comprador"
-            description="Entre com seu usuário cadastrado e aprovado para finalizar compras e acompanhar pedidos."
+            description="Entre com seu usuário de comprador cadastrado e aprovado."
             submitLabel="Entrar como comprador"
             pendingLabel="Entrando..."
             emailPlaceholder="comprador@email.com"
+            loginIntent="buyer"
           />
 
           <div className="panel panel-tight text-center text-sm leading-6 text-slate-600">

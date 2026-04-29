@@ -3,7 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 
 import { LoginForm } from "@/app/login/LoginForm";
-import { requireGuest } from "@/lib/auth/guards";
+import { requireGuestForLoginIntent } from "@/lib/auth/guards";
 
 export const metadata: Metadata = {
   title: "Entrar como admin | Material ASR HOW Brasil",
@@ -12,7 +12,7 @@ export const metadata: Metadata = {
 };
 
 export default async function AdminLoginPage() {
-  await requireGuest();
+  await requireGuestForLoginIntent("admin");
 
   const shouldShowDevCredentials = process.env.NODE_ENV === "development";
 
@@ -40,7 +40,7 @@ export default async function AdminLoginPage() {
               </h1>
 
               <p className="max-w-2xl text-base leading-7 text-slate-600">
-                Use esta entrada para acessar painel administrativo, pedidos,
+                Use esta entrada somente para painel administrativo, pedidos,
                 clientes, produtos, estoque, confirmação manual de PIX e PDV.
               </p>
             </div>
@@ -77,10 +77,11 @@ export default async function AdminLoginPage() {
         <div className="space-y-4">
           <LoginForm
             title="Acesso administrativo"
-            description="Entre com um usuário autorizado. O sistema validará permissões no servidor."
+            description="Entre com um usuário autorizado. Compradores não acessam esta área."
             submitLabel="Entrar como admin"
             pendingLabel="Entrando..."
             emailPlaceholder="admin@materialasr.local"
+            loginIntent="admin"
           />
 
           {shouldShowDevCredentials ? (

@@ -44,10 +44,6 @@ const adminLinks = [
 
 const quickAccessLinks = [
   {
-    href: "/catalogo",
-    label: "Ver catálogo",
-  },
-  {
     href: "/cadastro",
     label: "Cadastro comprador",
   },
@@ -180,8 +176,8 @@ export default async function AdminLayout({ children }: AdminLayoutProps) {
             </div>
 
             <p className="mt-3 text-xs leading-5 text-slate-500">
-              Catálogo e cadastro são áreas públicas/comprador. Por isso abrem
-              em nova aba para preservar o contexto administrativo.
+              O catálogo do comprador não aparece aqui porque a área do
+              comprador é restrita ao perfil comprador.
             </p>
           </section>
         </aside>
