@@ -19,6 +19,10 @@ export const metadata: Metadata = {
   description: "Listagem administrativa de clientes cadastrados.",
 };
 
+type AdminClientesPageProps = Readonly<{
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
+}>;
+
 const statusLabel: Record<CustomerStatus, string> = {
   PENDING: "Pendente",
   TEMPORARY: "Temporário",
@@ -40,6 +44,44 @@ function formatDateTime(date: Date): string {
     dateStyle: "short",
     timeStyle: "short",
   }).format(date);
+}
+
+function getStringParam(
+  params: Record<string, string | string[] | undefined> | undefined,
+  key: string,
+): string {
+  const value = params?.[key];
+
+  if (Array.isArray(value)) {
+    return value[0]?.trim() ?? "";
+  }
+
+  return value?.trim() ?? "";
+}
+
+function AlertMessage({
+  type,
+  message,
+}: Readonly<{
+  type: "success" | "error";
+  message?: string;
+}>) {
+  if (!message) return null;
+
+  const className =
+    type === "success"
+      ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+      : "border-red-200 bg-red-50 text-red-700";
+
+  return (
+    <div
+      role="alert"
+      aria-live="polite"
+      className={`rounded-2xl border px-4 py-3 text-sm ${className}`}
+    >
+      {message}
+    </div>
+  );
 }
 
 function getCustomerActionButtonClassName(
@@ -99,8 +141,14 @@ function CustomerActionButton({
   );
 }
 
-export default async function AdminClientesPage() {
+export default async function AdminClientesPage({
+  searchParams,
+}: AdminClientesPageProps) {
   await requirePermission(PERMISSIONS.CUSTOMERS_READ);
+
+  const params = await searchParams;
+  const successMessage = getStringParam(params, "sucesso");
+  const errorMessage = getStringParam(params, "erro");
 
   const customers = await prisma.customer.findMany({
     orderBy: {
@@ -131,23 +179,37 @@ export default async function AdminClientesPage() {
             Gerencie os cadastros recebidos, aprove clientes, libere uma compra
             temporária ou bloqueie acessos quando necessário.
           </p>
+
+          <div className="mt-4 rounded-2xl border border-blue-100 bg-blue-50 p-4 text-sm leading-6 text-blue-900">
+            O catálogo do comprador não fica disponível nesta área
+            administrativa. Use <strong>Produtos</strong> para consultar itens
+            como admin.
+          </div>
+
           <div className="mt-4 flex flex-wrap gap-3">
             <Link
               href="/cadastro"
+              target="_blank"
+              rel="noreferrer"
               className="rounded-full bg-blue-800 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-900"
             >
-              Abrir página de cadastro
+              Abrir cadastro em nova aba
             </Link>
 
             <Link
-              href="/catalogo"
+              href="/admin/produtos"
               className="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-blue-800 hover:text-blue-800"
             >
-              Ver catálogo público
+              Consultar produtos
             </Link>
           </div>
         </div>
       </header>
+
+      <div className="space-y-3">
+        <AlertMessage type="success" message={successMessage} />
+        <AlertMessage type="error" message={errorMessage} />
+      </div>
 
       <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
         {customers.length === 0 ? (
@@ -156,9 +218,11 @@ export default async function AdminClientesPage() {
 
             <Link
               href="/cadastro"
+              target="_blank"
+              rel="noreferrer"
               className="inline-flex rounded-full bg-blue-800 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-900"
             >
-              Abrir formulário de cadastro
+              Abrir formulário de cadastro em nova aba
             </Link>
           </div>
         ) : (
