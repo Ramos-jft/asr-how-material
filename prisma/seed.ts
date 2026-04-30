@@ -3,6 +3,9 @@ import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
 
+const ADMIN_LOGIN = "Admin";
+const ADMIN_PASSWORD = "How26";
+
 async function main() {
   const roles = [
     { name: "ADMIN", description: "Acesso total" },
@@ -36,7 +39,9 @@ async function main() {
   for (const role of roles) {
     await prisma.role.upsert({
       where: { name: role.name },
-      update: role,
+      update: {
+        description: role.description,
+      },
       create: role,
     });
   }
@@ -74,60 +79,81 @@ async function main() {
   };
 
   for (const [roleName, grantedPermissions] of Object.entries(grants)) {
+    const roleId = roleMap[roleName];
+
+    if (!roleId) {
+      throw new Error(`Role não encontrada no seed: ${roleName}`);
+    }
+
     for (const permissionName of grantedPermissions) {
+      const permissionId = permissionMap[permissionName];
+
+      if (!permissionId) {
+        throw new Error(`Permissão não encontrada no seed: ${permissionName}`);
+      }
+
       await prisma.rolePermission.upsert({
         where: {
           roleId_permissionId: {
-            roleId: roleMap[roleName],
-            permissionId: permissionMap[permissionName],
+            roleId,
+            permissionId,
           },
         },
         update: {},
         create: {
-          roleId: roleMap[roleName],
-          permissionId: permissionMap[permissionName],
+          roleId,
+          permissionId,
         },
       });
     }
   }
 
-  const adminPasswordHash = await bcrypt.hash("Admin@123456", 12);
+  const adminPasswordHash = await bcrypt.hash(ADMIN_PASSWORD, 12);
 
   const admin = await prisma.user.upsert({
-    where: { email: "admin@materialasr.local" },
+    where: { email: ADMIN_LOGIN },
     update: {
-      name: "Administrador Inicial",
+      name: "Administrador",
       passwordHash: adminPasswordHash,
+      status: "ACTIVE",
     },
     create: {
-      name: "Administrador Inicial",
-      email: "admin@materialasr.local",
+      name: "Administrador",
+      email: ADMIN_LOGIN,
       passwordHash: adminPasswordHash,
+      status: "ACTIVE",
     },
   });
+
+  const adminRoleId = roleMap.ADMIN;
+
+  if (!adminRoleId) {
+    throw new Error("Role ADMIN não encontrada.");
+  }
 
   await prisma.userRole.upsert({
     where: {
       userId_roleId: {
         userId: admin.id,
-        roleId: roleMap.ADMIN,
+        roleId: adminRoleId,
       },
     },
     update: {},
     create: {
       userId: admin.id,
-      roleId: roleMap.ADMIN,
+      roleId: adminRoleId,
     },
   });
 
   console.log("Seed concluído com sucesso.");
+  console.log(`Admin temporário criado/atualizado: ${ADMIN_LOGIN}`);
 }
 
-main()
-  .catch((error) => {
-    console.error(error);
-    process.exit(1);
-  })
-  .finally(async () => {
-    await prisma.$disconnect();
-  });
+try {
+  await main();
+} catch (error) {
+  console.error(error);
+  process.exitCode = 1;
+} finally {
+  await prisma.$disconnect();
+}
