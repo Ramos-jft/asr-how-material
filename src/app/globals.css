@@ -1,16 +1,19 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f1f5f9;
-  --foreground: #0f172a;
   --brand-primary: #2f2b89;
   --brand-secondary: #0b8ddf;
-  --brand-soft: #74c2f0;
+  --brand-accent: #74c2f0;
   --surface: #ffffff;
-  --surface-alt: #f8fafc;
-  --border: #e2e8f0;
-  --shadow-soft: 0 20px 60px rgba(15, 23, 42, 0.08);
-  --shadow-sm: 0 8px 24px rgba(15, 23, 42, 0.06);
+
+  --background: #f6f9fc;
+  --foreground: #0f172a;
+  --muted: #475569;
+  --muted-soft: #64748b;
+  --border: #dbe4ee;
+
+  --shadow-soft: 0 20px 60px rgba(47, 43, 137, 0.08);
+  --shadow-sm: 0 8px 24px rgba(47, 43, 137, 0.08);
 }
 
 * {
@@ -66,8 +69,8 @@ select {
   padding: 1rem;
   border: 1px solid var(--border);
   border-radius: 1.5rem;
-  background: var(--surface-alt);
-  color: #0f172a;
+  background: var(--surface);
+  color: var(--foreground);
 }
 
 .metric-card {
@@ -81,7 +84,7 @@ select {
 .metric-label {
   font-size: 0.875rem;
   font-weight: 500;
-  color: #64748b;
+  color: var(--muted-soft);
 }
 
 .metric-value {
@@ -91,21 +94,32 @@ select {
   font-weight: 600;
   line-height: 1;
   letter-spacing: -0.02em;
-  color: #020617;
+  color: var(--foreground);
 }
 
-.button-primary {
+.button-primary,
+.button-accent,
+.button-outline {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   padding: 0.75rem 1.25rem;
-  border: 0;
   border-radius: 9999px;
+  font-size: 0.875rem;
+  font-weight: 700;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    color 0.2s ease,
+    opacity 0.2s ease;
+}
+
+.button-primary {
+  border: 1px solid var(--brand-primary);
   background: var(--brand-primary);
   color: #ffffff;
-  font-size: 0.875rem;
-  font-weight: 600;
-  transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
 }
 
 .button-primary:hover {
@@ -113,9 +127,37 @@ select {
   box-shadow: var(--shadow-sm);
 }
 
-.button-primary:disabled {
+.button-accent {
+  border: 1px solid var(--brand-secondary);
+  background: var(--brand-secondary);
+  color: #ffffff;
+}
+
+.button-accent:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-sm);
+}
+
+.button-outline {
+  border: 1px solid var(--border);
+  background: #ffffff;
+  color: var(--brand-primary);
+}
+
+.button-outline:hover {
+  transform: translateY(-2px);
+  border-color: var(--brand-secondary);
+  color: var(--brand-secondary);
+  box-shadow: var(--shadow-sm);
+}
+
+.button-primary:disabled,
+.button-accent:disabled,
+.button-outline:disabled {
   cursor: not-allowed;
   opacity: 0.6;
+  transform: none;
+  box-shadow: none;
 }
 
 .button-secondary {
@@ -123,36 +165,44 @@ select {
   align-items: center;
   justify-content: center;
   padding: 0.75rem 1.25rem;
-  border: 1px solid #cbd5e1;
+  border: 1px solid var(--border);
   border-radius: 9999px;
   background: #ffffff;
-  color: #1e293b;
+  color: var(--brand-primary);
   font-size: 0.875rem;
-  font-weight: 600;
-  transition: transform 0.2s ease, border-color 0.2s ease;
+  font-weight: 700;
+  transition:
+    transform 0.2s ease,
+    border-color 0.2s ease,
+    color 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 .button-secondary:hover {
   transform: translateY(-2px);
-  border-color: #94a3b8;
+  border-color: var(--brand-secondary);
+  color: var(--brand-secondary);
+  box-shadow: var(--shadow-sm);
 }
 
 .field-label {
   display: block;
   font-size: 0.875rem;
-  font-weight: 500;
-  color: #334155;
+  font-weight: 600;
+  color: var(--foreground);
 }
 
 .field-input {
   width: 100%;
   padding: 0.75rem 1rem;
-  border: 1px solid #cbd5e1;
+  border: 1px solid var(--border);
   border-radius: 1rem;
   background: #ffffff;
-  color: #0f172a;
+  color: var(--foreground);
   outline: none;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 .field-input::placeholder {
@@ -160,8 +210,8 @@ select {
 }
 
 .field-input:focus {
-  border-color: #0ea5e9;
-  box-shadow: 0 0 0 4px rgba(14, 165, 233, 0.12);
+  border-color: var(--brand-secondary);
+  box-shadow: 0 0 0 4px rgba(11, 141, 223, 0.14);
 }
 
 .badge-brand {
@@ -170,10 +220,10 @@ select {
   align-items: center;
   padding: 0.25rem 0.75rem;
   border-radius: 9999px;
-  background: #e0f2fe;
-  color: #075985;
+  background: rgba(116, 194, 240, 0.22);
+  color: var(--brand-primary);
   font-size: 0.75rem;
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: 0.18em;
   text-transform: uppercase;
 }
@@ -184,12 +234,11 @@ select {
   padding: 0.25rem 0.75rem;
   border: 1px solid var(--border);
   border-radius: 9999px;
-  background: var(--surface-alt);
-  color: #334155;
+  background: #ffffff;
+  color: var(--muted);
   font-size: 0.75rem;
-  font-weight: 500;
+  font-weight: 600;
 }
-
 
 :focus-visible {
   outline: 3px solid rgba(11, 141, 223, 0.45);
