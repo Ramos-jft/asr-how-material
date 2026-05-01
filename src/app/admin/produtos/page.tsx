@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import { Prisma, ProductStatus } from "@prisma/client";
 
+import { uploadProductImageAction } from "@/app/admin/produtos/actions";
 import { requirePermission } from "@/lib/auth/guards";
-import { PERMISSIONS } from "@/lib/auth/permissions";
+import { hasPermission, PERMISSIONS } from "@/lib/auth/permissions";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -15,6 +17,15 @@ export const metadata: Metadata = {
 
 type AdminProductsPageProps = Readonly<{
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
+}>;
+
+type ProductImagePreviewProps = Readonly<{
+  images: Array<{
+    id: string;
+    url: string;
+    alt: string | null;
+  }>;
+  productName: string;
 }>;
 
 const statusLabels = {
@@ -62,6 +73,31 @@ function isProductStatus(value: string): value is ProductStatus {
   return productStatusOptions.includes(value as ProductStatus);
 }
 
+function AlertMessage({
+  type,
+  message,
+}: Readonly<{
+  type: "success" | "error";
+  message?: string;
+}>) {
+  if (!message) return null;
+
+  const className =
+    type === "success"
+      ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+      : "border-red-200 bg-red-50 text-red-700";
+
+  return (
+    <div
+      role="alert"
+      aria-live="polite"
+      className={`rounded-2xl border px-4 py-3 text-sm ${className}`}
+    >
+      {message}
+    </div>
+  );
+}
+
 function ProductStatusBadge({ status }: Readonly<{ status: ProductStatus }>) {
   return (
     <span
@@ -72,15 +108,84 @@ function ProductStatusBadge({ status }: Readonly<{ status: ProductStatus }>) {
   );
 }
 
+function ProductImagePreview({
+  images,
+  productName,
+}: ProductImagePreviewProps) {
+  const mainImage = images[0];
+
+  if (!mainImage) {
+    return (
+      <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 px-2 text-center text-xs text-slate-400">
+        Sem imagem
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-3">
+      <div className="relative h-16 w-16 overflow-hidden rounded-2xl border border-slate-200 bg-slate-50">
+        <Image
+          src={mainImage.url}
+          alt={mainImage.alt ?? productName}
+          fill
+          sizes="64px"
+          className="object-cover"
+        />
+      </div>
+
+      {images.length > 1 ? (
+        <span className="rounded-full bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-600">
+          +{images.length - 1}
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
+function ProductImageUploadForm({
+  productId,
+}: Readonly<{
+  productId: string;
+}>) {
+  return (
+    <form action={uploadProductImageAction} className="min-w-56 space-y-2">
+      <input type="hidden" name="productId" value={productId} />
+
+      <input
+        className="block w-full rounded-2xl border border-slate-300 bg-white px-3 py-2 text-xs text-slate-700 file:mr-3 file:rounded-full file:border-0 file:bg-blue-50 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-blue-800 hover:file:bg-blue-100"
+        type="file"
+        name="image"
+        accept="image/png,image/jpeg,image/webp"
+        required
+      />
+
+      <button
+        className="rounded-full bg-blue-800 px-4 py-2 text-xs font-semibold text-white transition hover:bg-blue-900"
+        type="submit"
+      >
+        Enviar imagem
+      </button>
+    </form>
+  );
+}
+
 export default async function AdminProductsPage({
   searchParams,
 }: AdminProductsPageProps) {
-  await requirePermission(PERMISSIONS.PRODUCTS_READ);
+  const auth = await requirePermission(PERMISSIONS.PRODUCTS_READ);
+  const canUploadImages = hasPermission(
+    auth.permissions,
+    PERMISSIONS.PRODUCTS_IMAGES_UPLOAD,
+  );
 
   const params = await searchParams;
   const search = getStringParam(params, "q");
   const rawStatus = getStringParam(params, "status");
   const selectedStatus = isProductStatus(rawStatus) ? rawStatus : null;
+
+  const successMessage = getStringParam(params, "sucesso");
+  const errorMessage = getStringParam(params, "erro");
 
   const where: Prisma.ProductWhereInput = {};
 
@@ -135,6 +240,18 @@ export default async function AdminProductsPage({
             name: true,
           },
         },
+        images: {
+          select: {
+            id: true,
+            url: true,
+            alt: true,
+            sortOrder: true,
+          },
+          orderBy: {
+            sortOrder: "asc",
+          },
+          take: 3,
+        },
         _count: {
           select: {
             orderItems: true,
@@ -167,12 +284,29 @@ export default async function AdminProductsPage({
           </h2>
 
           <p className="max-w-3xl text-sm leading-6 text-slate-600">
-            Consulte produtos, preços, estoque e status. Esta etapa mantém a
-            tela como leitura para evitar alterações acidentais antes da
-            homologação.
+            Consulte produtos, preços, estoque e status. Usuários com permissão
+            de upload podem enviar imagens para o armazenamento configurado no
+            Cloudflare R2.
           </p>
+
+          {canUploadImages ? (
+            <div className="mt-4 rounded-2xl border border-blue-100 bg-blue-50 p-4 text-sm leading-6 text-blue-900">
+              Upload habilitado para este usuário. As imagens serão enviadas
+              para o Cloudflare R2 e vinculadas ao produto no banco.
+            </div>
+          ) : (
+            <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm leading-6 text-slate-600">
+              Seu usuário pode visualizar produtos, mas não possui permissão
+              para enviar imagens.
+            </div>
+          )}
         </div>
       </header>
+
+      <div className="space-y-3">
+        <AlertMessage type="success" message={successMessage} />
+        <AlertMessage type="error" message={errorMessage} />
+      </div>
 
       <section className="grid gap-4 md:grid-cols-4">
         <article className="metric-card">
@@ -240,6 +374,9 @@ export default async function AdminProductsPage({
                     Produto
                   </th>
                   <th className="px-4 py-3 text-left font-semibold text-slate-700">
+                    Imagem
+                  </th>
+                  <th className="px-4 py-3 text-left font-semibold text-slate-700">
                     Categoria
                   </th>
                   <th className="px-4 py-3 text-left font-semibold text-slate-700">
@@ -254,6 +391,11 @@ export default async function AdminProductsPage({
                   <th className="px-4 py-3 text-left font-semibold text-slate-700">
                     Atualizado
                   </th>
+                  {canUploadImages ? (
+                    <th className="px-4 py-3 text-left font-semibold text-slate-700">
+                      Upload
+                    </th>
+                  ) : null}
                 </tr>
               </thead>
 
@@ -281,6 +423,13 @@ export default async function AdminProductsPage({
                             .join(" · ")}
                         </p>
                       ) : null}
+                    </td>
+
+                    <td className="px-4 py-3 align-top">
+                      <ProductImagePreview
+                        images={product.images}
+                        productName={product.name}
+                      />
                     </td>
 
                     <td className="px-4 py-3 align-top text-slate-600">
@@ -321,6 +470,12 @@ export default async function AdminProductsPage({
                     <td className="px-4 py-3 align-top text-slate-600">
                       {formatDateTime(product.updatedAt)}
                     </td>
+
+                    {canUploadImages ? (
+                      <td className="px-4 py-3 align-top">
+                        <ProductImageUploadForm productId={product.id} />
+                      </td>
+                    ) : null}
                   </tr>
                 ))}
               </tbody>
