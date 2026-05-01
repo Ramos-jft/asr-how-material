@@ -17,6 +17,14 @@ function isValidUrl(value: string): boolean {
   }
 }
 
+function isLocalPublicPath(value: string): boolean {
+  return value.startsWith("/") && !value.startsWith("//");
+}
+
+function isValidUrlOrLocalPublicPath(value: string): boolean {
+  return isValidUrl(value) || isLocalPublicPath(value);
+}
+
 function optionalEnv<TSchema extends z.ZodTypeAny>(schema: TSchema) {
   return z.preprocess(emptyStringToUndefined, schema.optional());
 }
@@ -33,8 +41,19 @@ const optionalUrl = z
   .min(1, "URL obrigatória.")
   .refine(isValidUrl, "Informe uma URL válida.");
 
+const optionalUrlOrLocalPublicPath = z
+  .string()
+  .trim()
+  .min(1, "URL ou caminho local obrigatório.")
+  .refine(
+    isValidUrlOrLocalPublicPath,
+    "Informe uma URL válida ou um caminho local iniciado com /.",
+  );
+
 const envSchema = z.object({
-  NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
+  NODE_ENV: z
+    .enum(["development", "test", "production"])
+    .default("development"),
 
   APP_BASE_URL: requiredUrl,
 
@@ -49,7 +68,7 @@ const envSchema = z.object({
   PRODUCTS_IMPORT_PATH: z.string().min(1),
 
   PIX_KEY: optionalEnv(z.string().min(1)),
-  PIX_QR_CODE_URL: optionalEnv(optionalUrl),
+  PIX_QR_CODE_URL: optionalEnv(optionalUrlOrLocalPublicPath),
 
   R2_ACCOUNT_ID: optionalEnv(z.string().min(1)),
   R2_ACCESS_KEY_ID: optionalEnv(z.string().min(1)),
