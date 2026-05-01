@@ -180,11 +180,15 @@ function getErrorMessage(error: unknown, fallback: string): string {
   return fallback;
 }
 
-function revalidateOrdersViews(): void {
+function revalidateOrdersViews(orderCode?: string): void {
   revalidatePath("/admin");
   revalidatePath("/admin/pedidos");
   revalidatePath("/admin/relatorios");
   revalidatePath("/pedidos");
+
+  if (orderCode) {
+    revalidatePath(`/pagamento/${orderCode}`);
+  }
 }
 
 export async function confirmPixPaymentAction(
@@ -207,6 +211,8 @@ export async function confirmPixPaymentAction(
         parsed.error.issues[0]?.message ?? "Dados de pagamento inválidos.",
     });
   }
+
+  let affectedOrderCode: string | null = null;
 
   try {
     const receivedAmountCents = parseCurrencyToCents(
@@ -234,6 +240,8 @@ export async function confirmPixPaymentAction(
       if (!order) {
         throw new Error("Pedido não encontrado.");
       }
+
+      affectedOrderCode = order.code;
 
       if (!confirmableOrderStatuses.has(order.status)) {
         throw new Error(
@@ -305,7 +313,7 @@ export async function confirmPixPaymentAction(
     });
   }
 
-  revalidateOrdersViews();
+  revalidateOrdersViews(affectedOrderCode ?? undefined);
 
   redirectToOrdersMessage({
     type: "sucesso",
@@ -333,6 +341,7 @@ export async function cancelOrderAndReleaseStockAction(
 
   const reason = parsed.data.reason?.trim() || null;
   const now = new Date();
+  let affectedOrderCode: string | null = null;
 
   try {
     await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
@@ -363,6 +372,8 @@ export async function cancelOrderAndReleaseStockAction(
       if (!order) {
         throw new Error("Pedido não encontrado.");
       }
+
+      affectedOrderCode = order.code;
 
       if (!cancellableOrderStatuses.has(order.status)) {
         throw new Error(
@@ -482,12 +493,9 @@ export async function cancelOrderAndReleaseStockAction(
     });
   }
 
-  revalidatePath("/admin");
-  revalidatePath("/admin/pedidos");
+  revalidateOrdersViews(affectedOrderCode ?? undefined);
   revalidatePath("/admin/estoque");
   revalidatePath("/admin/produtos");
-  revalidatePath("/admin/relatorios");
-  revalidatePath("/pedidos");
 
   redirectToOrdersMessage({
     type: "sucesso",
@@ -520,6 +528,7 @@ export async function updateOrderStatusAction(
 
   const notes = parsed.data.notes?.trim() || null;
   const now = new Date();
+  let affectedOrderCode: string | null = null;
 
   try {
     await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
@@ -539,6 +548,8 @@ export async function updateOrderStatusAction(
       if (!order) {
         throw new Error("Pedido não encontrado.");
       }
+
+      affectedOrderCode = order.code;
 
       assertValidOrderStatusTransition({
         currentStatus: order.status,
@@ -588,7 +599,7 @@ export async function updateOrderStatusAction(
     });
   }
 
-  revalidateOrdersViews();
+  revalidateOrdersViews(affectedOrderCode ?? undefined);
 
   redirectToOrdersMessage({
     type: "sucesso",
