@@ -10,6 +10,15 @@ export const metadata: Metadata = {
   },
   description:
     "Loja restrita, painel administrativo e PDV da Material ASR HOW Brasil.",
+  icons: {
+    icon: [
+      {
+        url: "/favicon.svg",
+        type: "image/svg+xml",
+      },
+    ],
+    shortcut: "/favicon.svg",
+  },
 };
 
 type RootLayoutProps = Readonly<{
@@ -19,9 +28,7 @@ type RootLayoutProps = Readonly<{
 export default function RootLayout({ children }: RootLayoutProps) {
   return (
     <html lang="pt-BR" className="h-full antialiased">
-      <body className="min-h-full bg-slate-100 text-slate-900">
-        {children}
-      </body>
+      <body className="min-h-full bg-slate-100 text-slate-900">{children}</body>
     </html>
   );
 }

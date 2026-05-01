@@ -42,13 +42,6 @@ const adminLinks = [
   },
 ];
 
-const quickAccessLinks = [
-  {
-    href: "/cadastro",
-    label: "Cadastro comprador",
-  },
-];
-
 type AdminLayoutProps = Readonly<{
   children: ReactNode;
 }>;
@@ -57,23 +50,27 @@ export default async function AdminLayout({ children }: AdminLayoutProps) {
   const auth = await requirePermission(PERMISSIONS.DASHBOARD_READ);
 
   return (
-    <main className="min-h-screen bg-slate-50">
+    <main className="min-h-screen overflow-x-hidden bg-slate-50">
       <header className="border-b border-slate-200 bg-white">
-        <div className="mx-auto flex max-w-7xl flex-col gap-5 px-6 py-5">
-          <div className="flex items-center justify-between gap-4">
-            <Link href="/admin" aria-label="Ir para o dashboard administrativo">
+        <div className="mx-auto flex w-full max-w-7xl flex-col gap-5 px-4 py-5 sm:px-6">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <Link
+              href="/admin"
+              aria-label="Ir para o dashboard administrativo"
+              className="inline-flex w-fit rounded-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-700 focus-visible:ring-offset-2"
+            >
               <Image
-                src="/brand/logo-asr-how.png"
+                src="/logo-asr-how.png"
                 alt="Logo ASR HOW Brasil"
                 width={144}
-                height={48}
+                height={85}
                 priority
                 className="h-auto w-32 sm:w-36"
               />
             </Link>
 
             <Image
-              src="/brand/logo-na.png"
+              src="/logo-na.png"
               alt="Logo NA"
               width={72}
               height={72}
@@ -82,27 +79,27 @@ export default async function AdminLayout({ children }: AdminLayoutProps) {
             />
           </div>
 
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-            <div>
+          <div className="flex min-w-0 flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+            <div className="min-w-0">
               <p className="text-sm font-semibold uppercase tracking-[0.3em] text-blue-800">
                 Material ASR HOW Brasil
               </p>
 
-              <h1 className="mt-1 text-xl font-bold tracking-tight text-slate-950">
+              <h1 className="mt-1 break-words text-xl font-bold tracking-tight text-slate-950">
                 Painel administrativo
               </h1>
             </div>
 
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <div className="flex min-w-0 flex-col gap-3 lg:flex-row lg:items-center">
               <nav
-                className="flex flex-wrap gap-2"
+                className="flex max-w-full flex-wrap gap-2"
                 aria-label="Menu administrativo"
               >
                 {adminLinks.map((link) => (
                   <Link
                     key={link.href}
                     href={link.href}
-                    className="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-blue-800 hover:text-blue-800"
+                    className="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-blue-800 hover:text-blue-800"
                   >
                     {link.label}
                   </Link>
@@ -126,14 +123,14 @@ export default async function AdminLayout({ children }: AdminLayoutProps) {
         </div>
       </header>
 
-      <div className="mx-auto grid max-w-7xl gap-6 px-6 py-8 lg:grid-cols-[280px_1fr]">
-        <aside className="h-fit space-y-5 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-          <section>
+      <div className="mx-auto grid w-full max-w-7xl grid-cols-1 gap-6 px-4 py-6 sm:px-6 lg:py-8 xl:grid-cols-[280px_minmax(0,1fr)]">
+        <aside className="h-fit min-w-0 space-y-5 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+          <section className="min-w-0">
             <p className="text-xs font-semibold uppercase tracking-[0.25em] text-slate-500">
               Usuário atual
             </p>
 
-            <h2 className="mt-3 text-lg font-bold text-slate-950">
+            <h2 className="mt-3 break-words text-lg font-bold text-slate-950">
               {auth.user.name}
             </h2>
 
@@ -159,30 +156,19 @@ export default async function AdminLayout({ children }: AdminLayoutProps) {
             </p>
 
             <div className="mt-4 grid gap-2">
-              {quickAccessLinks.map((link) => (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:border-blue-800 hover:text-blue-800"
-                >
-                  {link.label}
-                  <span className="ml-2 text-xs font-normal text-slate-500">
-                    abre em nova aba
-                  </span>
-                </Link>
-              ))}
+              <Link
+                href="/cadastro"
+                target="_blank"
+                rel="noreferrer"
+                className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-950 transition hover:border-blue-800 hover:text-blue-800"
+              >
+                Cadastro comprador
+              </Link>
             </div>
-
-            <p className="mt-3 text-xs leading-5 text-slate-500">
-              O catálogo do comprador não aparece aqui porque a área do
-              comprador é restrita ao perfil comprador.
-            </p>
           </section>
         </aside>
 
-        <div>{children}</div>
+        <div className="min-w-0">{children}</div>
       </div>
     </main>
   );

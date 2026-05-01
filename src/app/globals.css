@@ -22,13 +22,41 @@
 
 html {
   scroll-behavior: smooth;
+  overflow-x: hidden;
 }
 
 body {
+  min-width: 320px;
   margin: 0;
+  overflow-x: hidden;
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+main,
+section,
+article,
+aside,
+div,
+form,
+header,
+footer,
+nav {
+  min-width: 0;
+}
+
+img,
+svg,
+video,
+canvas {
+  max-width: 100%;
+  height: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
 }
 
 a {
@@ -40,7 +68,16 @@ button,
 input,
 textarea,
 select {
+  max-width: 100%;
   font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
 }
 
 .page-shell {
@@ -54,6 +91,7 @@ select {
 }
 
 .panel {
+  min-width: 0;
   padding: 2rem;
   border: 1px solid var(--border);
   border-radius: 32px;
@@ -66,6 +104,7 @@ select {
 }
 
 .mini-card {
+  min-width: 0;
   padding: 1rem;
   border: 1px solid var(--border);
   border-radius: 1.5rem;
@@ -74,6 +113,7 @@ select {
 }
 
 .metric-card {
+  min-width: 0;
   padding: 1.25rem;
   border: 1px solid var(--border);
   border-radius: 28px;
@@ -101,12 +141,14 @@ select {
 .button-accent,
 .button-outline {
   display: inline-flex;
+  min-width: 0;
   align-items: center;
   justify-content: center;
   padding: 0.75rem 1.25rem;
   border-radius: 9999px;
   font-size: 0.875rem;
   font-weight: 700;
+  text-align: center;
   transition:
     transform 0.2s ease,
     box-shadow 0.2s ease,
@@ -162,6 +204,7 @@ select {
 
 .button-secondary {
   display: inline-flex;
+  min-width: 0;
   align-items: center;
   justify-content: center;
   padding: 0.75rem 1.25rem;
@@ -171,6 +214,7 @@ select {
   color: var(--brand-primary);
   font-size: 0.875rem;
   font-weight: 700;
+  text-align: center;
   transition:
     transform 0.2s ease,
     border-color 0.2s ease,
@@ -183,6 +227,25 @@ select {
   border-color: var(--brand-secondary);
   color: var(--brand-secondary);
   box-shadow: var(--shadow-sm);
+}
+
+a.bg-slate-950,
+button.bg-slate-950,
+a.bg-slate-900,
+button.bg-slate-900,
+a.bg-blue-800,
+button.bg-blue-800,
+a.bg-blue-900,
+button.bg-blue-900,
+a.bg-red-700,
+button.bg-red-700,
+a.bg-red-800,
+button.bg-red-800,
+a.bg-emerald-700,
+button.bg-emerald-700,
+a.bg-emerald-800,
+button.bg-emerald-800 {
+  color: #ffffff;
 }
 
 .field-label {
@@ -245,7 +308,7 @@ select {
   outline-offset: 3px;
 }
 
-@media (max-width: 640px) {
+@media (max-width: 768px) {
   .page-shell {
     align-items: flex-start;
     padding: 2rem 1rem;
@@ -254,5 +317,35 @@ select {
   .panel {
     border-radius: 24px;
     padding: 1.25rem;
+  }
+
+  .panel-tight {
+    padding: 1.25rem;
+  }
+
+  .metric-card {
+    border-radius: 22px;
+    padding: 1rem;
+  }
+
+  .metric-value {
+    font-size: 1.5rem;
+  }
+
+  .button-primary,
+  .button-accent,
+  .button-outline,
+  .button-secondary {
+    width: 100%;
+  }
+}
+
+@media (max-width: 420px) {
+  .page-shell {
+    padding-inline: 0.75rem;
+  }
+
+  .panel {
+    padding: 1rem;
   }
 }
