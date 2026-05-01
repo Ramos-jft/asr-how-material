@@ -15,6 +15,8 @@ export default async function AdminLoginPage() {
   await requireGuestForLoginIntent("admin");
 
   const shouldShowDevCredentials = process.env.NODE_ENV === "development";
+  const devAdminEmail =
+    process.env.ADMIN_EMAIL?.trim() || "admin@materialasr.local";
 
   return (
     <main className="page-shell">
@@ -27,7 +29,7 @@ export default async function AdminLoginPage() {
 
           <div className="space-y-4">
             <Image
-              src="/brand/logo-asr-how.png"
+              src="/logo-asr-how.png"
               alt="Logo ASR HOW Brasil"
               width={168}
               height={56}
@@ -80,22 +82,24 @@ export default async function AdminLoginPage() {
             description="Entre com um usuário autorizado. Compradores não acessam esta área."
             submitLabel="Entrar como admin"
             pendingLabel="Entrando..."
-            emailPlaceholder="admin@materialasr.local"
+            emailPlaceholder={devAdminEmail}
             loginIntent="admin"
           />
 
           {shouldShowDevCredentials ? (
             <div className="panel panel-tight text-sm leading-6 text-slate-600">
               <p>
-                <strong>Usuário inicial do seed:</strong>{" "}
-                admin@materialasr.local
+                <strong>Usuário inicial configurado:</strong> {devAdminEmail}
               </p>
+
               <p>
-                <strong>Senha inicial do seed:</strong> Admin@123456
+                <strong>Senha:</strong> valor definido em{" "}
+                <code>ADMIN_PASSWORD</code> no ambiente local.
               </p>
+
               <p className="text-xs text-slate-500">
-                Visível apenas em desenvolvimento. Troque essa senha antes de
-                qualquer homologação externa.
+                Visível apenas em desenvolvimento. Não exponha senha real no
+                código nem no Git.
               </p>
             </div>
           ) : null}

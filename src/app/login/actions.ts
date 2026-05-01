@@ -3,7 +3,9 @@
 import bcrypt from "bcryptjs";
 import { redirect } from "next/navigation";
 import { z } from "zod";
+
 import { createSession } from "@/lib/auth/session";
+import { hasPermission, PERMISSIONS, ROLES } from "@/lib/auth/permissions";
 import { prisma } from "@/lib/prisma";
 
 export type LoginFormState = {
@@ -11,6 +13,8 @@ export type LoginFormState = {
 };
 
 const ADMIN_INTERNAL_LOGIN = "admin@admin";
+
+type LoginIntent = "admin" | "buyer";
 
 const loginIdentifierSchema = z
   .string()
@@ -29,10 +33,41 @@ const loginSchema = z.object({
   password: z.string().min(5, "A senha deve ter pelo menos 5 caracteres."),
 });
 
+function getLoginIntent(formData: FormData): LoginIntent | undefined {
+  const value = formData.get("loginIntent");
+
+  if (value === "admin" || value === "buyer") {
+    return value;
+  }
+
+  return undefined;
+}
+
+function getRedirectPath(input: {
+  loginIntent?: LoginIntent;
+  isAdmin: boolean;
+}): string {
+  if (input.loginIntent === "admin") {
+    return "/admin";
+  }
+
+  if (input.loginIntent === "buyer") {
+    return "/catalogo";
+  }
+
+  if (input.isAdmin) {
+    return "/admin";
+  }
+
+  return "/catalogo";
+}
+
 export async function loginAction(
   _previousState: LoginFormState,
   formData: FormData,
 ): Promise<LoginFormState> {
+  const loginIntent = getLoginIntent(formData);
+
   const parsed = loginSchema.safeParse({
     email: formData.get("email"),
     password: formData.get("password"),
@@ -92,6 +127,23 @@ export async function loginAction(
     ),
   );
 
+  const isAdmin = hasPermission(permissions, PERMISSIONS.DASHBOARD_READ);
+  const isBuyer =
+    roles.includes(ROLES.CUSTOMER) &&
+    !hasPermission(permissions, PERMISSIONS.DASHBOARD_READ);
+
+  if (loginIntent === "admin" && !isAdmin) {
+    return {
+      error: "Usuário sem permissão para esta área.",
+    };
+  }
+
+  if (loginIntent === "buyer" && !isBuyer) {
+    return {
+      error: "Usuário sem permissão para esta área.",
+    };
+  }
+
   await prisma.user.update({
     where: {
       id: user.id,
@@ -107,5 +159,10 @@ export async function loginAction(
     permissions,
   });
 
-  redirect("/admin");
+  redirect(
+    getRedirectPath({
+      loginIntent,
+      isAdmin,
+    }),
+  );
 }

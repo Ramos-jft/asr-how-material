@@ -61,7 +61,7 @@ export default async function BuyerLoginPage({
 
           <div className="space-y-4">
             <Image
-              src="/brand/logo-asr-how.png"
+              src="/logo-asr-how.png"
               alt="Logo ASR HOW Brasil"
               width={168}
               height={56}
