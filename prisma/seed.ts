@@ -3,8 +3,10 @@ import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
 
-const ADMIN_LOGIN = "Admin";
+const ADMIN_LOGIN = "admin@admin";
 const ADMIN_PASSWORD = "How26";
+
+const LEGACY_ADMIN_LOGINS = ["Admin", "admin@materialasr.local"];
 
 async function main() {
   const roles = [
@@ -39,9 +41,7 @@ async function main() {
   for (const role of roles) {
     await prisma.role.upsert({
       where: { name: role.name },
-      update: {
-        description: role.description,
-      },
+      update: role,
       create: role,
     });
   }
@@ -82,14 +82,14 @@ async function main() {
     const roleId = roleMap[roleName];
 
     if (!roleId) {
-      throw new Error(`Role não encontrada no seed: ${roleName}`);
+      throw new Error(`Role não encontrada: ${roleName}`);
     }
 
     for (const permissionName of grantedPermissions) {
       const permissionId = permissionMap[permissionName];
 
       if (!permissionId) {
-        throw new Error(`Permissão não encontrada no seed: ${permissionName}`);
+        throw new Error(`Permissão não encontrada: ${permissionName}`);
       }
 
       await prisma.rolePermission.upsert({
@@ -110,20 +110,38 @@ async function main() {
 
   const adminPasswordHash = await bcrypt.hash(ADMIN_PASSWORD, 12);
 
-  const admin = await prisma.user.upsert({
+  const currentAdmin = await prisma.user.findUnique({
     where: { email: ADMIN_LOGIN },
-    update: {
-      name: "Administrador",
-      passwordHash: adminPasswordHash,
-      status: "ACTIVE",
-    },
-    create: {
-      name: "Administrador",
-      email: ADMIN_LOGIN,
-      passwordHash: adminPasswordHash,
-      status: "ACTIVE",
-    },
   });
+
+  const legacyAdmin =
+    currentAdmin ??
+    (await prisma.user.findFirst({
+      where: {
+        email: {
+          in: LEGACY_ADMIN_LOGINS,
+        },
+      },
+    }));
+
+  const admin = legacyAdmin
+    ? await prisma.user.update({
+        where: { id: legacyAdmin.id },
+        data: {
+          name: "Administrador",
+          email: ADMIN_LOGIN,
+          passwordHash: adminPasswordHash,
+          status: "ACTIVE",
+        },
+      })
+    : await prisma.user.create({
+        data: {
+          name: "Administrador",
+          email: ADMIN_LOGIN,
+          passwordHash: adminPasswordHash,
+          status: "ACTIVE",
+        },
+      });
 
   const adminRoleId = roleMap.ADMIN;
 
@@ -146,14 +164,14 @@ async function main() {
   });
 
   console.log("Seed concluído com sucesso.");
-  console.log(`Admin temporário criado/atualizado: ${ADMIN_LOGIN}`);
+  console.log(`Admin: ${ADMIN_LOGIN}`);
 }
 
 try {
   await main();
 } catch (error) {
-  console.error(error);
-  process.exitCode = 1;
+  console.error("Falha ao executar seed:", error);
+  process.exit(1);
 } finally {
   await prisma.$disconnect();
 }
