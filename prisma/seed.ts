@@ -6,7 +6,7 @@ const prisma = new PrismaClient();
 const ADMIN_LOGIN = "admin@admin";
 const ADMIN_PASSWORD = "How26";
 
-const LEGACY_ADMIN_LOGINS = ["Admin", "admin@materialasr.local"];
+const LEGACY_ADMIN_LOGINS = ["Admin", "admin", "admin@materialasr.local"];
 
 async function main() {
   const roles = [
@@ -41,7 +41,9 @@ async function main() {
   for (const role of roles) {
     await prisma.role.upsert({
       where: { name: role.name },
-      update: role,
+      update: {
+        description: role.description,
+      },
       create: role,
     });
   }
@@ -82,14 +84,14 @@ async function main() {
     const roleId = roleMap[roleName];
 
     if (!roleId) {
-      throw new Error(`Role não encontrada: ${roleName}`);
+      throw new Error(`Role não encontrada no seed: ${roleName}`);
     }
 
     for (const permissionName of grantedPermissions) {
       const permissionId = permissionMap[permissionName];
 
       if (!permissionId) {
-        throw new Error(`Permissão não encontrada: ${permissionName}`);
+        throw new Error(`Permissão não encontrada no seed: ${permissionName}`);
       }
 
       await prisma.rolePermission.upsert({
@@ -110,23 +112,27 @@ async function main() {
 
   const adminPasswordHash = await bcrypt.hash(ADMIN_PASSWORD, 12);
 
-  const currentAdmin = await prisma.user.findUnique({
-    where: { email: ADMIN_LOGIN },
+  const existingAdmin = await prisma.user.findFirst({
+    where: {
+      OR: [
+        { email: ADMIN_LOGIN },
+        {
+          email: {
+            in: LEGACY_ADMIN_LOGINS,
+          },
+        },
+      ],
+    },
+    orderBy: {
+      createdAt: "asc",
+    },
   });
 
-  const legacyAdmin =
-    currentAdmin ??
-    (await prisma.user.findFirst({
-      where: {
-        email: {
-          in: LEGACY_ADMIN_LOGINS,
-        },
-      },
-    }));
-
-  const admin = legacyAdmin
+  const admin = existingAdmin
     ? await prisma.user.update({
-        where: { id: legacyAdmin.id },
+        where: {
+          id: existingAdmin.id,
+        },
         data: {
           name: "Administrador",
           email: ADMIN_LOGIN,
@@ -164,14 +170,14 @@ async function main() {
   });
 
   console.log("Seed concluído com sucesso.");
-  console.log(`Admin: ${ADMIN_LOGIN}`);
+  console.log(`Admin temporário criado/atualizado: ${ADMIN_LOGIN}`);
 }
 
 try {
   await main();
 } catch (error) {
-  console.error("Falha ao executar seed:", error);
-  process.exit(1);
+  console.error(error);
+  process.exitCode = 1;
 } finally {
   await prisma.$disconnect();
 }
