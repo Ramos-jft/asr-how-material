@@ -5,6 +5,7 @@ import { ProductStatus, type Prisma } from "@prisma/client";
 import { addToCartAction } from "@/app/carrinho/actions";
 import { formatCurrencyFromCents } from "@/lib/formatters";
 import { prisma } from "@/lib/prisma";
+import { BrandLogo } from "@/components/brand/BrandLogo";
 
 export const dynamic = "force-dynamic";
 
@@ -171,29 +172,35 @@ export default async function CatalogPage({
   return (
     <main className="page-shell items-start">
       <section className="panel w-full space-y-8">
-        <header className="space-y-4">
-          <span className="badge-brand">Catálogo</span>
+        <header className="space-y-5">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <BrandLogo href="/" priority />
 
-          <div className="space-y-3">
-            <h1 className="max-w-3xl text-3xl font-semibold tracking-tight text-slate-950 md:text-5xl">
-              Materiais disponíveis
-            </h1>
+            <div className="flex flex-wrap gap-3">
+              <Link className="button-secondary" href="/">
+                Voltar ao início
+              </Link>
 
-            <p className="max-w-3xl text-base leading-7 text-slate-600">
-              Consulte os produtos importados da planilha inicial. O checkout
-              será liberado após a implementação de carrinho, aprovação de
-              cliente e janela de vendas.
-            </p>
+              <Link className="button-primary" href="/carrinho">
+                Ver carrinho
+              </Link>
+            </div>
           </div>
 
-          <div className="flex flex-wrap gap-3">
-            <Link className="button-secondary" href="/">
-              Voltar ao início
-            </Link>
+          <div className="space-y-4">
+            <span className="badge-brand">Catálogo</span>
 
-            <Link className="button-primary" href="/login">
-              Entrar no painel
-            </Link>
+            <div className="space-y-3">
+              <h1 className="max-w-3xl text-3xl font-semibold tracking-tight text-slate-950 md:text-5xl">
+                Materiais disponíveis
+              </h1>
+
+              <p className="max-w-3xl text-base leading-7 text-slate-600">
+                Consulte os produtos disponíveis. A finalização do pedido
+                depende de cadastro aprovado, pedido mínimo, estoque disponível,
+                janela de vendas e instruções de PIX.
+              </p>
+            </div>
           </div>
         </header>
 
