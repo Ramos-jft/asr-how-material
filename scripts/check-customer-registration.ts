@@ -1,5 +1,7 @@
 import { PrismaClient } from "@prisma/client";
 
+import { canCustomerBuy } from "../src/domain/customer-policy";
+
 const prisma = new PrismaClient();
 
 async function getCustomerEmail(): Promise<string> {
@@ -20,7 +22,7 @@ async function getCustomerEmail(): Promise<string> {
 
   if (!latestCustomer) {
     throw new Error(
-      "Nenhum cliente encontrado. Informe um e-mail ou faça um cadastro antes de validar.",
+      "Nenhum cliente encontrado. Informe um e-mail ou cadastre um comprador antes de validar.",
     );
   }
 
@@ -30,66 +32,69 @@ async function getCustomerEmail(): Promise<string> {
 async function main() {
   const email = await getCustomerEmail();
 
-  const user = await prisma.user.findUnique({
+  const customer = await prisma.customer.findUnique({
     where: {
       email,
     },
     include: {
-      roles: {
+      user: {
         include: {
-          role: true,
+          roles: {
+            include: {
+              role: true,
+            },
+          },
         },
       },
-      customer: {
-        include: {
-          address: true,
-        },
-      },
+      address: true,
     },
   });
 
-  if (!user) {
-    throw new Error(`User não encontrado para o e-mail: ${email}`);
+  if (!customer) {
+    throw new Error(`Customer não encontrado para o e-mail: ${email}`);
   }
 
-  const customerRole = user.roles.find(
-    (userRole) => userRole.role.name === "CUSTOMER",
-  );
+  const roleNames =
+    customer.user?.roles.map((userRole) => userRole.role.name).join(", ") ?? "";
 
-  const customer = user.customer;
-  const address = customer?.address;
+  const purchasePolicy = canCustomerBuy({
+    status: customer.status,
+    temporaryPurchaseRemaining: customer.temporaryPurchaseRemaining,
+  });
 
   console.table([
     {
-      email,
-      userCreated: Boolean(user),
-      userStatus: user.status,
-      hasCustomerRole: Boolean(customerRole),
-      customerCreated: Boolean(customer),
-      customerStatus: customer?.status ?? "NÃO ENCONTRADO",
-      addressCreated: Boolean(address),
+      email: customer.email,
+      customerStatus: customer.status,
+      temporaryPurchaseRemaining: customer.temporaryPurchaseRemaining,
+      userCreated: Boolean(customer.user),
+      userStatus: customer.user?.status ?? "NÃO ENCONTRADO",
+      roles: roleNames || "NENHUMA",
+      addressCreated: Boolean(customer.address),
+      canBuy: purchasePolicy.canBuy,
+      reason: purchasePolicy.reason ?? "Liberado para compra",
     },
   ]);
 
-  if (!customerRole) {
-    throw new Error("Role CUSTOMER não foi vinculada ao usuário.");
+  if (!customer.user) {
+    throw new Error("Customer não possui User vinculado.");
   }
 
-  if (!customer) {
-    throw new Error("Customer não foi criado/vinculado ao usuário.");
+  if (!roleNames.includes("CUSTOMER")) {
+    throw new Error("User não possui role CUSTOMER.");
   }
 
-  if (!address) {
-    throw new Error("CustomerAddress não foi criado/vinculado ao cliente.");
+  if (!customer.address) {
+    throw new Error("Customer não possui endereço vinculado.");
   }
 
-  console.log("Cadastro de comprador validado com sucesso.");
+  console.log("Validação de aprovação concluída.");
 }
 
 try {
   await main();
 } catch (error) {
-  console.error("Falha ao validar cadastro de comprador:", error);
+  console.error("Falha ao validar aprovação do cliente:", error);
   process.exitCode = 1;
 } finally {
   await prisma.$disconnect();

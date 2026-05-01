@@ -15,7 +15,7 @@ function LogoImage({ priority = false }: Readonly<{ priority?: boolean }>) {
       width={168}
       height={99}
       priority={priority}
-      className="h-auto w-36 sm:w-44"
+      className="h-auto w-32 sm:w-40"
     />
   );
 }
@@ -25,14 +25,6 @@ export function BrandLogo({
   priority = false,
   className = "",
 }: BrandLogoProps) {
-  if (!href) {
-    return (
-      <div className={className}>
-        <LogoImage priority={priority} />
-      </div>
-    );
-  }
-
   return (
     <Link
       href={href}

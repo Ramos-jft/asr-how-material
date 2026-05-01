@@ -9,7 +9,7 @@ import {
   makeCustomerTemporaryAction,
 } from "@/app/admin/clientes/actions";
 import { requirePermission } from "@/lib/auth/guards";
-import { PERMISSIONS } from "@/lib/auth/permissions";
+import { hasPermission, PERMISSIONS } from "@/lib/auth/permissions";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -39,6 +39,13 @@ const statusClassName: Record<CustomerStatus, string> = {
 
 type CustomerActionButtonVariant = "primary" | "secondary" | "danger";
 
+type CustomerWithAddress = {
+  address: {
+    city: string;
+    state: string;
+  } | null;
+};
+
 function formatDateTime(date: Date): string {
   return new Intl.DateTimeFormat("pt-BR", {
     dateStyle: "short",
@@ -57,6 +64,14 @@ function getStringParam(
   }
 
   return value?.trim() ?? "";
+}
+
+function getCustomerLocation(customer: CustomerWithAddress): string {
+  if (!customer.address) {
+    return "Não informado";
+  }
+
+  return `${customer.address.city}/${customer.address.state}`;
 }
 
 function AlertMessage({
@@ -144,7 +159,11 @@ function CustomerActionButton({
 export default async function AdminClientesPage({
   searchParams,
 }: AdminClientesPageProps) {
-  await requirePermission(PERMISSIONS.CUSTOMERS_READ);
+  const auth = await requirePermission(PERMISSIONS.CUSTOMERS_READ);
+  const canManageCustomers = hasPermission(
+    auth.permissions,
+    PERMISSIONS.CUSTOMERS_APPROVE,
+  );
 
   const params = await searchParams;
   const successMessage = getStringParam(params, "sucesso");
@@ -279,9 +298,7 @@ export default async function AdminClientesPage({
                     </td>
 
                     <td className="px-5 py-4 align-top text-slate-700">
-                      {customer.address
-                        ? `${customer.address.city}/${customer.address.state}`
-                        : "Não informado"}
+                      {getCustomerLocation(customer)}
                     </td>
 
                     <td className="px-5 py-4 align-top">
@@ -301,7 +318,8 @@ export default async function AdminClientesPage({
                           Ver detalhes
                         </Link>
 
-                        {canApproveCustomer(customer.status) ? (
+                        {canManageCustomers &&
+                        canApproveCustomer(customer.status) ? (
                           <form action={approveCustomerAction}>
                             <input
                               type="hidden"
@@ -315,7 +333,8 @@ export default async function AdminClientesPage({
                           </form>
                         ) : null}
 
-                        {canMakeCustomerTemporary(customer.status) ? (
+                        {canManageCustomers &&
+                        canMakeCustomerTemporary(customer.status) ? (
                           <form action={makeCustomerTemporaryAction}>
                             <input
                               type="hidden"
@@ -329,7 +348,8 @@ export default async function AdminClientesPage({
                           </form>
                         ) : null}
 
-                        {canBlockCustomer(customer.status) ? (
+                        {canManageCustomers &&
+                        canBlockCustomer(customer.status) ? (
                           <form action={blockCustomerAction}>
                             <input
                               type="hidden"

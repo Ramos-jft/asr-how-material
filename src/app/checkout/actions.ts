@@ -15,6 +15,7 @@ import {
   ORDER_MINIMUM_CENTS,
   calculateOrderPricing,
 } from "@/domain/order-pricing";
+import { canCustomerBuy } from "@/domain/customer-policy";
 import { requireAuth } from "@/lib/auth/guards";
 import { clearCart, getCartItems, type CartItem } from "@/lib/cart";
 import { createOrderCode } from "@/lib/orders/order-code";
@@ -105,18 +106,6 @@ function assertCartHasItems(items: NormalizedCartItem[]): void {
   }
 }
 
-function isCustomerAllowedToBuy(input: {
-  status: CustomerStatus;
-  temporaryPurchaseRemaining: number;
-}): boolean {
-  if (input.status === CustomerStatus.APPROVED) return true;
-
-  return (
-    input.status === CustomerStatus.TEMPORARY &&
-    input.temporaryPurchaseRemaining > 0
-  );
-}
-
 function assertCustomerCanCheckout(
   customer: CheckoutCustomer | null,
 ): asserts customer is CheckoutCustomerWithAddress {
@@ -124,14 +113,15 @@ function assertCustomerCanCheckout(
     throw new Error("Cadastro de cliente não encontrado para este usuário.");
   }
 
-  if (
-    !isCustomerAllowedToBuy({
-      status: customer.status,
-      temporaryPurchaseRemaining: customer.temporaryPurchaseRemaining,
-    })
-  ) {
+  const purchasePolicy = canCustomerBuy({
+    status: customer.status,
+    temporaryPurchaseRemaining: customer.temporaryPurchaseRemaining,
+  });
+
+  if (!purchasePolicy.canBuy) {
     throw new Error(
-      "Seu cadastro ainda não está aprovado para finalizar compras.",
+      purchasePolicy.reason ??
+        "Seu cadastro ainda não está aprovado para finalizar compras.",
     );
   }
 
