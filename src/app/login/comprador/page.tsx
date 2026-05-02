@@ -18,6 +18,21 @@ type BuyerLoginPageProps = Readonly<{
   }>;
 }>;
 
+const buyerFeatures = [
+  {
+    title: "Catálogo",
+    description: "Materiais disponíveis para consulta e compra.",
+  },
+  {
+    title: "PIX",
+    description: "Instruções de pagamento do pedido.",
+  },
+  {
+    title: "Pedidos",
+    description: "Acompanhamento do status da compra.",
+  },
+];
+
 function AlertMessage({
   type,
   message,
@@ -52,20 +67,21 @@ export default async function BuyerLoginPage({
 
   return (
     <main className="page-shell">
-      <section className="grid gap-8 lg:grid-cols-[1.15fr_0.85fr] lg:items-center">
+      <section className="grid w-full gap-8 lg:grid-cols-[1.15fr_0.85fr] lg:items-center">
         <div className="panel space-y-6">
           <div className="inline-flex w-fit items-center gap-3 rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-medium text-emerald-800">
             <span className="h-2.5 w-2.5 rounded-full bg-emerald-600" />
             Área do comprador
           </div>
 
-          <div className="space-y-4">
+          <div className="space-y-5">
             <Image
               src="/logo-asr-how.png"
               alt="Logo ASR HOW Brasil"
-              width={168}
-              height={56}
+              width={192}
+              height={96}
               priority
+              className="h-auto w-40 sm:w-48"
             />
 
             <div className="space-y-3">
@@ -80,34 +96,26 @@ export default async function BuyerLoginPage({
             </div>
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-3">
-            <article className="mini-card">
-              <strong className="text-xl font-semibold">Catálogo</strong>
-              <span className="text-sm text-slate-600">
-                materiais disponíveis
-              </span>
-            </article>
+          <div className="grid gap-4 md:grid-cols-3">
+            {buyerFeatures.map((feature) => (
+              <article
+                key={feature.title}
+                className="mini-card flex flex-col gap-2"
+              >
+                <strong className="block text-xl font-semibold leading-tight text-slate-950">
+                  {feature.title}
+                </strong>
 
-            <article className="mini-card">
-              <strong className="text-xl font-semibold">PIX</strong>
-              <span className="text-sm text-slate-600">
-                instruções de pagamento
-              </span>
-            </article>
-
-            <article className="mini-card">
-              <strong className="text-xl font-semibold">Pedidos</strong>
-              <span className="text-sm text-slate-600">
-                acompanhamento do status
-              </span>
-            </article>
+                <span className="block text-sm leading-6 text-slate-600">
+                  {feature.description}
+                </span>
+              </article>
+            ))}
           </div>
 
-          <div className="flex flex-wrap gap-3">
-            <Link className="button-secondary" href="/">
-              Voltar ao início
-            </Link>
-          </div>
+          <Link className="button-secondary inline-flex sm:w-fit" href="/">
+            Voltar ao início
+          </Link>
         </div>
 
         <div className="space-y-4">
@@ -119,7 +127,6 @@ export default async function BuyerLoginPage({
             description="Entre com seu usuário de comprador cadastrado e aprovado."
             submitLabel="Entrar como comprador"
             pendingLabel="Entrando..."
-            emailPlaceholder="comprador@email.com"
             loginIntent="buyer"
           />
 
