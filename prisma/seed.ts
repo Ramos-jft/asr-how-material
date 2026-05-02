@@ -48,6 +48,12 @@ const grants: Record<string, readonly string[]> = {
   CUSTOMER: [],
 };
 
+type AdminConfig = {
+  email: string;
+  password: string;
+  name: string;
+};
+
 function isProductionLikeEnvironment(): boolean {
   return (
     process.env.NODE_ENV === "production" ||
@@ -56,41 +62,116 @@ function isProductionLikeEnvironment(): boolean {
   );
 }
 
-function getAdminConfig() {
-  const isProductionLike = isProductionLikeEnvironment();
+function normalizeEmail(value: string): string {
+  return value.trim().toLowerCase();
+}
 
-  const email = (
-    process.env.ADMIN_EMAIL ?? (isProductionLike ? "" : DEFAULT_DEV_ADMIN_EMAIL)
-  )
-    .trim()
-    .toLowerCase();
-
-  const password = process.env.ADMIN_PASSWORD ?? "";
-  const name = (process.env.ADMIN_NAME ?? DEFAULT_ADMIN_NAME).trim();
-
+function validateEmail(email: string, source: string): void {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
   if (!emailRegex.test(email)) {
     throw new Error(
-      "ADMIN_EMAIL precisa ser um e-mail válido. Exemplo: admin@materialasr.local",
+      `${source} precisa ser um e-mail válido. Exemplo: admin@materialasr.local`,
     );
   }
+}
 
-  if (password.length < 12) {
-    throw new Error(
-      "ADMIN_PASSWORD precisa ter pelo menos 12 caracteres. Defina essa variável no .env local ou na Vercel.",
-    );
+function validatePassword(password: string, source: string): void {
+  if (password.trim().length === 0) {
+    throw new Error(`${source} não pode ficar vazio.`);
   }
+}
 
+function validateName(name: string, source: string): void {
   if (!name) {
-    throw new Error("ADMIN_NAME não pode ficar vazio.");
+    throw new Error(`${source} não pode ficar vazio.`);
   }
+}
+
+function getPrimaryAdminConfig(): AdminConfig {
+  const isProductionLike = isProductionLikeEnvironment();
+
+  const email = normalizeEmail(
+    process.env.ADMIN_EMAIL ??
+      (isProductionLike ? "" : DEFAULT_DEV_ADMIN_EMAIL),
+  );
+
+  const password = process.env.ADMIN_PASSWORD ?? "";
+  const name = (process.env.ADMIN_NAME ?? DEFAULT_ADMIN_NAME).trim();
+
+  validateEmail(email, "ADMIN_EMAIL");
+  validatePassword(password, "ADMIN_PASSWORD");
+  validateName(name, "ADMIN_NAME");
 
   return {
     email,
     password,
     name,
   };
+}
+
+function getOptionalAdminConfig(index: 2 | 3): AdminConfig | null {
+  const emailKey = `ADMIN_${index}_EMAIL`;
+  const passwordKey = `ADMIN_${index}_PASSWORD`;
+  const nameKey = `ADMIN_${index}_NAME`;
+
+  const rawEmail = process.env[emailKey];
+  const rawPassword = process.env[passwordKey];
+  const rawName = process.env[nameKey];
+
+  const hasAnyValue = Boolean(rawEmail || rawPassword || rawName);
+
+  if (!hasAnyValue) {
+    return null;
+  }
+
+  if (!rawEmail) {
+    throw new Error(
+      `${emailKey} é obrigatório quando ${passwordKey} ou ${nameKey} estiver definido.`,
+    );
+  }
+
+  if (!rawPassword) {
+    throw new Error(
+      `${passwordKey} é obrigatório quando ${emailKey} ou ${nameKey} estiver definido.`,
+    );
+  }
+
+  const email = normalizeEmail(rawEmail);
+  const password = rawPassword;
+  const name = (rawName ?? `Administrador ${index}`).trim();
+
+  validateEmail(email, emailKey);
+  validatePassword(password, passwordKey);
+  validateName(name, nameKey);
+
+  return {
+    email,
+    password,
+    name,
+  };
+}
+
+function getAdminConfigs(): AdminConfig[] {
+  const configs = [
+    getPrimaryAdminConfig(),
+    getOptionalAdminConfig(2),
+    getOptionalAdminConfig(3),
+  ].filter((config): config is AdminConfig => config !== null);
+
+  const duplicatedEmails = configs
+    .map((config) => config.email)
+    .filter((email, index, emails) => emails.indexOf(email) !== index);
+
+  if (duplicatedEmails.length > 0) {
+    throw new Error(
+      `Existem e-mails de admin duplicados no seed: ${Array.from(
+        new Set(duplicatedEmails),
+      ).join(", ")}`,
+    );
+  }
+
+  return configs;
 }
 
 function getRequiredId(map: Record<string, string>, key: string): string {
@@ -156,8 +237,10 @@ async function seedRolesAndPermissions() {
   return roleMap;
 }
 
-async function seedAdminUser(roleMap: Record<string, string>) {
-  const adminConfig = getAdminConfig();
+async function seedAdminUser(
+  roleMap: Record<string, string>,
+  adminConfig: AdminConfig,
+): Promise<string> {
   const adminPasswordHash = await bcrypt.hash(adminConfig.password, 12);
 
   const admin = await prisma.user.upsert({
@@ -194,13 +277,30 @@ async function seedAdminUser(roleMap: Record<string, string>) {
   return adminConfig.email;
 }
 
+async function seedAdminUsers(roleMap: Record<string, string>) {
+  const adminConfigs = getAdminConfigs();
+  const configuredEmails: string[] = [];
+
+  for (const adminConfig of adminConfigs) {
+    const email = await seedAdminUser(roleMap, adminConfig);
+    configuredEmails.push(email);
+  }
+
+  return configuredEmails;
+}
+
 async function main() {
   const roleMap = await seedRolesAndPermissions();
-  const adminEmail = await seedAdminUser(roleMap);
+  const adminEmails = await seedAdminUsers(roleMap);
 
   console.log("Seed concluído com sucesso.");
-  console.log(`Admin configurado: ${adminEmail}`);
-  console.log("A senha não foi exibida por segurança.");
+  console.log("Admins configurados:");
+
+  for (const email of adminEmails) {
+    console.log(`- ${email}`);
+  }
+
+  console.log("As senhas não foram exibidas por segurança.");
 }
 
 try {
