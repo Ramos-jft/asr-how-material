@@ -31,6 +31,46 @@ const movementLabels = {
   [StockMovementType.CANCEL_RELEASE]: "Liberação por cancelamento",
 } satisfies Record<StockMovementType, string>;
 
+const productStatusLabels = {
+  [ProductStatus.ACTIVE]: "Disponível",
+  [ProductStatus.INACTIVE]: "Indisponível",
+  [ProductStatus.OUT_OF_STOCK]: "Sem estoque",
+} satisfies Record<ProductStatus, string>;
+
+const productStatusClassNames = {
+  [ProductStatus.ACTIVE]: "border-emerald-200 bg-emerald-50 text-emerald-800",
+  [ProductStatus.INACTIVE]: "border-slate-200 bg-slate-100 text-slate-700",
+  [ProductStatus.OUT_OF_STOCK]: "border-red-200 bg-red-50 text-red-700",
+} satisfies Record<ProductStatus, string>;
+
+function getDisplayProductStatus(product: {
+  status: ProductStatus;
+  stockCurrent: number;
+}): ProductStatus {
+  if (product.status === ProductStatus.INACTIVE) {
+    return ProductStatus.INACTIVE;
+  }
+
+  if (
+    product.stockCurrent <= 0 ||
+    product.status === ProductStatus.OUT_OF_STOCK
+  ) {
+    return ProductStatus.OUT_OF_STOCK;
+  }
+
+  return ProductStatus.ACTIVE;
+}
+
+function ProductStatusBadge({ status }: Readonly<{ status: ProductStatus }>) {
+  return (
+    <span
+      className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${productStatusClassNames[status]}`}
+    >
+      {productStatusLabels[status]}
+    </span>
+  );
+}
+
 function formatDateTime(date: Date): string {
   return new Intl.DateTimeFormat("pt-BR", {
     dateStyle: "short",
@@ -359,8 +399,10 @@ export default async function AdminStockPage({
                         {product.stockMin}
                       </td>
 
-                      <td className="px-4 py-3 align-top text-slate-700">
-                        {product.status}
+                      <td className="px-4 py-3 align-top">
+                        <ProductStatusBadge
+                          status={getDisplayProductStatus(product)}
+                        />
                       </td>
 
                       <td className="px-4 py-3 align-top text-slate-600">

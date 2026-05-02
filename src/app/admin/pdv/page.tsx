@@ -211,21 +211,6 @@ export default async function AdminPdvPage({
 
   return (
     <section className="space-y-6">
-      <header className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-        <span className="badge-brand">PDV</span>
-
-        <div className="mt-4 space-y-2">
-          <h2 className="text-2xl font-bold tracking-tight text-slate-950">
-            Ponto de venda
-          </h2>
-
-          <p className="max-w-3xl text-sm leading-6 text-slate-600">
-            Venda direta para eventos, sem exigir cliente cadastrado. A venda é
-            criada como paga, baixa estoque imediatamente e registra auditoria.
-          </p>
-        </div>
-      </header>
-
       <div className="space-y-3">
         <AlertMessage type="success" message={successMessage} />
         <AlertMessage type="error" message={errorMessage} />
@@ -252,6 +237,21 @@ export default async function AdminPdvPage({
         </article>
       </section>
 
+      <header className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+        <span className="badge-brand">PDV</span>
+
+        <div className="mt-4 space-y-2">
+          <h2 className="text-2xl font-bold tracking-tight text-slate-950">
+            Ponto de venda
+          </h2>
+
+          <p className="max-w-3xl text-sm leading-6 text-slate-600">
+            Venda direta para eventos, sem exigir cliente cadastrado. A venda é
+            criada como paga, baixa estoque imediatamente e registra auditoria.
+          </p>
+        </div>
+      </header>
+
       <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
         <h3 className="text-lg font-semibold text-slate-950">Buscar produto</h3>
 
@@ -269,7 +269,7 @@ export default async function AdminPdvPage({
         </form>
       </section>
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_430px]">
+      <div className="grid gap-6 2xl:grid-cols-[minmax(0,1fr)_430px]">
         <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
           <h3 className="text-lg font-semibold text-slate-950">
             Produtos disponíveis
@@ -286,7 +286,7 @@ export default async function AdminPdvPage({
                   className="rounded-2xl border border-slate-200 bg-slate-50 p-4"
                   key={product.id}
                 >
-                  <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                  <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(280px,360px)] xl:items-start">
                     <div className="space-y-1">
                       <h4 className="font-semibold text-slate-950">
                         {product.name}
@@ -313,7 +313,7 @@ export default async function AdminPdvPage({
 
                     <form
                       action={addPdvCartItemAction}
-                      className="grid min-w-80 gap-3"
+                      className="grid w-full min-w-0 gap-3"
                     >
                       <input
                         type="hidden"
@@ -350,12 +350,12 @@ export default async function AdminPdvPage({
 
                       <label className="space-y-2">
                         <span className="field-label">
-                          Motivo do override de preço
+                          Motivo do aumento de preço
                         </span>
                         <input
                           className="field-input"
                           name="overrideReason"
-                          placeholder="Obrigatório se alterar o preço"
+                          placeholder="Informe o motivo do aumento"
                         />
                       </label>
 
@@ -454,12 +454,14 @@ export default async function AdminPdvPage({
                       </div>
 
                       <label className="space-y-2">
-                        <span className="field-label">Motivo</span>
+                        <span className="field-label">
+                          Motivo do aumento de preço
+                        </span>
                         <input
                           className="field-input"
                           name="overrideReason"
                           defaultValue={item.overrideReason ?? ""}
-                          placeholder="Obrigatório se alterar o preço"
+                          placeholder="Informe o motivo do aumento"
                         />
                       </label>
 

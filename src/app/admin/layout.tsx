@@ -53,35 +53,24 @@ export default async function AdminLayout({ children }: AdminLayoutProps) {
     <main className="min-h-screen overflow-x-hidden bg-slate-50">
       <header className="border-b border-slate-200 bg-white">
         <div className="mx-auto flex w-full max-w-7xl flex-col gap-5 px-4 py-5 sm:px-6">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <Link
-              href="/admin"
-              aria-label="Ir para o dashboard administrativo"
-              className="inline-flex w-fit rounded-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-700 focus-visible:ring-offset-2"
-            >
-              <Image
-                src="/logo-asr-how.png"
-                alt="Logo ASR HOW Brasil"
-                width={144}
-                height={85}
-                priority
-                className="h-auto w-32 sm:w-36"
-              />
-            </Link>
+          <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+            <div className="flex min-w-0 flex-col items-center text-center">
+              <Link
+                href="/admin"
+                aria-label="Ir para o dashboard administrativo"
+                className="relative hidden h-20 w-20 rounded-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-700 focus-visible:ring-offset-2 sm:block lg:h-24 lg:w-24"
+              >
+                <Image
+                  src="/logo-asr-how.png"
+                  alt="Logo ASR HOW Brasil"
+                  fill
+                  priority
+                  sizes="96px"
+                  className="object-contain"
+                />
+              </Link>
 
-            <Image
-              src="/logo-na.png"
-              alt="Logo NA"
-              width={72}
-              height={72}
-              priority
-              className="h-14 w-auto sm:h-16"
-            />
-          </div>
-
-          <div className="flex min-w-0 flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-            <div className="min-w-0">
-              <p className="text-sm font-semibold uppercase tracking-[0.3em] text-blue-800">
+              <p className="mt-3 text-sm font-semibold uppercase tracking-[0.3em] text-blue-800">
                 Material ASR HOW Brasil
               </p>
 
@@ -90,34 +79,45 @@ export default async function AdminLayout({ children }: AdminLayoutProps) {
               </h1>
             </div>
 
-            <div className="flex min-w-0 flex-col gap-3 lg:flex-row lg:items-center">
-              <nav
-                className="flex max-w-full flex-wrap gap-2"
-                aria-label="Menu administrativo"
-              >
-                {adminLinks.map((link) => (
-                  <Link
-                    key={link.href}
-                    href={link.href}
-                    className="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-blue-800 hover:text-blue-800"
-                  >
-                    {link.label}
-                  </Link>
-                ))}
-              </nav>
+            <div className="relative hidden h-20 w-20 shrink-0 sm:block lg:h-24 lg:w-24">
+              <Image
+                src="/logo-na.png"
+                alt="Logo NA"
+                fill
+                priority
+                sizes="96px"
+                className="object-contain"
+              />
+            </div>
+          </div>
 
-              <div className="flex flex-wrap gap-2">
-                <BackButton />
+          <div className="flex min-w-0 flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+            <nav
+              className="flex max-w-full flex-wrap justify-center gap-2 xl:justify-start"
+              aria-label="Menu administrativo"
+            >
+              {adminLinks.map((link) => (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-blue-800 hover:text-blue-800"
+                >
+                  {link.label}
+                </Link>
+              ))}
+            </nav>
 
-                <form action={logoutAction}>
-                  <button
-                    type="submit"
-                    className="rounded-full bg-slate-950 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
-                  >
-                    Sair
-                  </button>
-                </form>
-              </div>
+            <div className="flex flex-wrap justify-center gap-2 xl:justify-end">
+              <BackButton />
+
+              <form action={logoutAction}>
+                <button
+                  type="submit"
+                  className="rounded-full border border-red-700 bg-red-700 px-4 py-2 text-sm font-semibold text-white transition hover:border-red-800 hover:bg-red-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-700 focus-visible:ring-offset-2"
+                >
+                  Sair
+                </button>
+              </form>
             </div>
           </div>
         </div>

@@ -42,6 +42,18 @@ const statusClassNames = {
 
 const productStatusOptions = Object.values(ProductStatus);
 
+const productRowGridWithUploadClassName =
+  "grid gap-4 xl:grid-cols-[minmax(240px,1.5fr)_88px_minmax(150px,0.9fr)_130px_110px_130px_minmax(170px,0.9fr)] xl:items-center";
+
+const productRowGridWithoutUploadClassName =
+  "grid gap-4 xl:grid-cols-[minmax(240px,1.6fr)_88px_minmax(150px,1fr)_130px_110px_130px] xl:items-center";
+
+const productHeaderGridWithUploadClassName =
+  "hidden gap-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs font-semibold uppercase tracking-[0.16em] text-slate-500 xl:grid xl:grid-cols-[minmax(240px,1.5fr)_88px_minmax(150px,0.9fr)_130px_110px_130px_minmax(170px,0.9fr)]";
+
+const productHeaderGridWithoutUploadClassName =
+  "hidden gap-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs font-semibold uppercase tracking-[0.16em] text-slate-500 xl:grid xl:grid-cols-[minmax(240px,1.6fr)_88px_minmax(150px,1fr)_130px_110px_130px]";
+
 function formatCurrency(cents: number): string {
   return new Intl.NumberFormat("pt-BR", {
     style: "currency",
@@ -149,22 +161,28 @@ function ProductImageUploadForm({
   productId: string;
 }>) {
   return (
-    <form action={uploadProductImageAction} className="min-w-56 space-y-2">
+    <form
+      action={uploadProductImageAction}
+      className="w-full min-w-0 space-y-2"
+    >
       <input type="hidden" name="productId" value={productId} />
 
-      <input
-        className="block w-full rounded-2xl border border-slate-300 bg-white px-3 py-2 text-xs text-slate-700 file:mr-3 file:rounded-full file:border-0 file:bg-blue-50 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-blue-800 hover:file:bg-blue-100"
-        type="file"
-        name="image"
-        accept="image/png,image/jpeg,image/webp"
-        required
-      />
+      <label className="inline-flex w-full cursor-pointer items-center justify-center rounded-full border border-slate-300 bg-white px-3 py-2 text-center text-xs font-semibold text-blue-800 transition hover:border-blue-800 hover:bg-blue-50">
+        Escolher imagem
+        <input
+          className="sr-only"
+          type="file"
+          name="image"
+          accept="image/png,image/jpeg,image/webp"
+          required
+        />
+      </label>
 
       <button
-        className="rounded-full bg-blue-800 px-4 py-2 text-xs font-semibold text-white transition hover:bg-blue-900"
+        className="inline-flex w-full items-center justify-center rounded-full bg-blue-800 px-3 py-2 text-xs font-semibold text-white transition hover:bg-blue-900"
         type="submit"
       >
-        Enviar imagem
+        Enviar
       </button>
     </form>
   );
@@ -273,6 +291,14 @@ export default async function AdminProductsPage({
     countsByStatus.map((item) => [item.status, item._count._all]),
   ) as Partial<Record<ProductStatus, number>>;
 
+  const productRowGridClassName = canUploadImages
+    ? productRowGridWithUploadClassName
+    : productRowGridWithoutUploadClassName;
+
+  const productHeaderGridClassName = canUploadImages
+    ? productHeaderGridWithUploadClassName
+    : productHeaderGridWithoutUploadClassName;
+
   return (
     <section className="space-y-6">
       <header className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
@@ -284,20 +310,20 @@ export default async function AdminProductsPage({
           </h2>
 
           <p className="max-w-3xl text-sm leading-6 text-slate-600">
-            Consulte produtos, preços, estoque e status. Usuários com permissão
-            de upload podem enviar imagens para o armazenamento configurado no
-            Cloudflare R2.
+            Consulte os produtos disponíveis, preços, estoque e status. Quando
+            necessário, envie uma imagem do produto para facilitar o
+            atendimento.
           </p>
 
           {canUploadImages ? (
             <div className="mt-4 rounded-2xl border border-blue-100 bg-blue-50 p-4 text-sm leading-6 text-blue-900">
-              Upload habilitado para este usuário. As imagens serão enviadas
-              para o Cloudflare R2 e vinculadas ao produto no banco.
+              Upload habilitado para este usuário. Selecione a imagem do produto
+              e envie para vinculá-la ao cadastro.
             </div>
           ) : (
             <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm leading-6 text-slate-600">
-              Seu usuário pode visualizar produtos, mas não possui permissão
-              para enviar imagens.
+              Seu usuário pode consultar produtos, mas não possui permissão para
+              enviar imagens.
             </div>
           )}
         </div>
@@ -366,120 +392,128 @@ export default async function AdminProductsPage({
             Nenhum produto encontrado para os filtros selecionados.
           </p>
         ) : (
-          <div className="mt-5 overflow-x-auto rounded-2xl border border-slate-200">
-            <table className="min-w-full divide-y divide-slate-200 text-sm">
-              <thead className="bg-slate-50">
-                <tr>
-                  <th className="px-4 py-3 text-left font-semibold text-slate-700">
-                    Produto
-                  </th>
-                  <th className="px-4 py-3 text-left font-semibold text-slate-700">
-                    Imagem
-                  </th>
-                  <th className="px-4 py-3 text-left font-semibold text-slate-700">
-                    Categoria
-                  </th>
-                  <th className="px-4 py-3 text-left font-semibold text-slate-700">
-                    Preço
-                  </th>
-                  <th className="px-4 py-3 text-left font-semibold text-slate-700">
-                    Estoque
-                  </th>
-                  <th className="px-4 py-3 text-left font-semibold text-slate-700">
-                    Status
-                  </th>
-                  <th className="px-4 py-3 text-left font-semibold text-slate-700">
-                    Atualizado
-                  </th>
-                  {canUploadImages ? (
-                    <th className="px-4 py-3 text-left font-semibold text-slate-700">
-                      Upload
-                    </th>
-                  ) : null}
-                </tr>
-              </thead>
+          <div className="mt-5 space-y-3">
+            <div className={productHeaderGridClassName}>
+              <span>Produto</span>
+              <span>Imagem</span>
+              <span>Categoria</span>
+              <span>Preço</span>
+              <span>Estoque</span>
+              <span>Status</span>
+              {canUploadImages ? <span>Imagem</span> : null}
+            </div>
 
-              <tbody className="divide-y divide-slate-100 bg-white">
-                {products.map((product) => (
-                  <tr key={product.id}>
-                    <td className="px-4 py-3 align-top">
-                      <Link
-                        className="font-semibold text-slate-950 underline-offset-4 hover:underline"
-                        href={`/produto/${product.slug}`}
-                        target="_blank"
-                        rel="noreferrer"
-                      >
-                        {product.name}
-                      </Link>
+            {products.map((product) => (
+              <article
+                key={product.id}
+                className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
+              >
+                <div className={productRowGridClassName}>
+                  <div className="min-w-0">
+                    <span className="mb-1 block text-xs font-semibold uppercase tracking-[0.16em] text-slate-500 xl:hidden">
+                      Produto
+                    </span>
 
+                    <Link
+                      className="break-words font-semibold text-slate-950 underline-offset-4 hover:underline"
+                      href={`/produto/${product.slug}`}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      {product.name}
+                    </Link>
+
+                    <p className="mt-1 text-xs text-slate-500">
+                      SKU: {product.sku}
+                    </p>
+
+                    {product.brand || product.model ? (
                       <p className="mt-1 text-xs text-slate-500">
-                        SKU: {product.sku}
+                        {[product.brand, product.model]
+                          .filter(Boolean)
+                          .join(" · ")}
                       </p>
-
-                      {product.brand || product.model ? (
-                        <p className="mt-1 text-xs text-slate-500">
-                          {[product.brand, product.model]
-                            .filter(Boolean)
-                            .join(" · ")}
-                        </p>
-                      ) : null}
-                    </td>
-
-                    <td className="px-4 py-3 align-top">
-                      <ProductImagePreview
-                        images={product.images}
-                        productName={product.name}
-                      />
-                    </td>
-
-                    <td className="px-4 py-3 align-top text-slate-600">
-                      <p>{product.category?.name ?? "Sem categoria"}</p>
-                      <p className="mt-1 text-xs text-slate-500">
-                        {product.subcategory?.name ?? "Sem subcategoria"}
-                      </p>
-                    </td>
-
-                    <td className="px-4 py-3 align-top text-slate-700">
-                      <p className="font-semibold text-slate-950">
-                        {formatCurrency(product.retailPriceCents)}
-                      </p>
-
-                      {product.wholesalePriceCents ? (
-                        <p className="mt-1 text-xs text-slate-500">
-                          Atacado: {formatCurrency(product.wholesalePriceCents)}
-                        </p>
-                      ) : null}
-                    </td>
-
-                    <td className="px-4 py-3 align-top text-slate-700">
-                      <p>
-                        Atual:{" "}
-                        <strong className="text-slate-950">
-                          {product.stockCurrent}
-                        </strong>
-                      </p>
-                      <p className="mt-1 text-xs text-slate-500">
-                        Mínimo: {product.stockMin}
-                      </p>
-                    </td>
-
-                    <td className="px-4 py-3 align-top">
-                      <ProductStatusBadge status={product.status} />
-                    </td>
-
-                    <td className="px-4 py-3 align-top text-slate-600">
-                      {formatDateTime(product.updatedAt)}
-                    </td>
-
-                    {canUploadImages ? (
-                      <td className="px-4 py-3 align-top">
-                        <ProductImageUploadForm productId={product.id} />
-                      </td>
                     ) : null}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                  </div>
+
+                  <div className="min-w-0">
+                    <span className="mb-1 block text-xs font-semibold uppercase tracking-[0.16em] text-slate-500 xl:hidden">
+                      Imagem
+                    </span>
+
+                    <ProductImagePreview
+                      images={product.images}
+                      productName={product.name}
+                    />
+                  </div>
+
+                  <div className="min-w-0 text-sm text-slate-600">
+                    <span className="mb-1 block text-xs font-semibold uppercase tracking-[0.16em] text-slate-500 xl:hidden">
+                      Categoria
+                    </span>
+
+                    <p>{product.category?.name ?? "Sem categoria"}</p>
+                    <p className="mt-1 text-xs text-slate-500">
+                      {product.subcategory?.name ?? "Sem subcategoria"}
+                    </p>
+                  </div>
+
+                  <div className="min-w-0 text-sm text-slate-700">
+                    <span className="mb-1 block text-xs font-semibold uppercase tracking-[0.16em] text-slate-500 xl:hidden">
+                      Preço
+                    </span>
+
+                    <p className="font-semibold text-slate-950">
+                      {formatCurrency(product.retailPriceCents)}
+                    </p>
+
+                    {product.wholesalePriceCents ? (
+                      <p className="mt-1 text-xs text-slate-500">
+                        Atacado: {formatCurrency(product.wholesalePriceCents)}
+                      </p>
+                    ) : null}
+                  </div>
+
+                  <div className="min-w-0 text-sm text-slate-700">
+                    <span className="mb-1 block text-xs font-semibold uppercase tracking-[0.16em] text-slate-500 xl:hidden">
+                      Estoque
+                    </span>
+
+                    <p>
+                      Atual:{" "}
+                      <strong className="text-slate-950">
+                        {product.stockCurrent}
+                      </strong>
+                    </p>
+                    <p className="mt-1 text-xs text-slate-500">
+                      Mínimo: {product.stockMin}
+                    </p>
+                  </div>
+
+                  <div className="min-w-0">
+                    <span className="mb-1 block text-xs font-semibold uppercase tracking-[0.16em] text-slate-500 xl:hidden">
+                      Status
+                    </span>
+
+                    <ProductStatusBadge status={product.status} />
+
+                    <p className="mt-2 text-xs text-slate-500">
+                      Atualizado em {formatDateTime(product.updatedAt)}
+                    </p>
+                  </div>
+
+                  {canUploadImages ? (
+                    <div className="min-w-0">
+                      <span className="mb-1 block text-xs font-semibold uppercase tracking-[0.16em] text-slate-500 xl:hidden">
+                        Imagem
+                      </span>
+
+                      <ProductImageUploadForm productId={product.id} />
+                    </div>
+                  ) : null}
+                </div>
+              </article>
+            ))}
           </div>
         )}
       </section>
