@@ -210,11 +210,26 @@ export default async function AdminPdvPage({
   );
 
   return (
-    <section className="space-y-6">
+    <section className="mx-auto w-full max-w-7xl space-y-6">
       <div className="space-y-3">
         <AlertMessage type="success" message={successMessage} />
         <AlertMessage type="error" message={errorMessage} />
       </div>
+
+      <header className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+        <span className="badge-brand">PDV</span>
+
+        <div className="mt-4 space-y-2">
+          <h2 className="text-2xl font-bold tracking-tight text-slate-950">
+            Ponto de venda
+          </h2>
+
+          <p className="max-w-3xl text-sm leading-6 text-slate-600">
+            Venda direta para eventos, sem exigir cliente cadastrado. A venda é
+            criada como paga, baixa estoque imediatamente e registra auditoria.
+          </p>
+        </div>
+      </header>
 
       <section className="grid gap-4 md:grid-cols-3">
         <article className="metric-card">
@@ -237,157 +252,23 @@ export default async function AdminPdvPage({
         </article>
       </section>
 
-      <header className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-        <span className="badge-brand">PDV</span>
+      <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div>
+          <h3 className="text-lg font-semibold text-slate-950">Carrinho PDV</h3>
 
-        <div className="mt-4 space-y-2">
-          <h2 className="text-2xl font-bold tracking-tight text-slate-950">
-            Ponto de venda
-          </h2>
-
-          <p className="max-w-3xl text-sm leading-6 text-slate-600">
-            Venda direta para eventos, sem exigir cliente cadastrado. A venda é
-            criada como paga, baixa estoque imediatamente e registra auditoria.
+          <p className="mt-1 text-sm leading-6 text-slate-600">
+            Revise os itens antes de finalizar. A baixa de estoque ocorre na
+            finalização da venda.
           </p>
         </div>
-      </header>
 
-      <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-        <h3 className="text-lg font-semibold text-slate-950">Buscar produto</h3>
-
-        <form className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto]">
-          <input
-            className="field-input"
-            name="q"
-            placeholder="Buscar por nome, SKU ou código de barras"
-            defaultValue={search}
-          />
-
-          <button className="button-primary" type="submit">
-            Buscar
-          </button>
-        </form>
-      </section>
-
-      <div className="grid gap-6 2xl:grid-cols-[minmax(0,1fr)_430px]">
-        <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-          <h3 className="text-lg font-semibold text-slate-950">
-            Produtos disponíveis
-          </h3>
-
-          {products.length === 0 ? (
-            <p className="mt-4 text-sm text-slate-600">
-              Nenhum produto ativo com estoque disponível.
-            </p>
-          ) : (
-            <div className="mt-5 space-y-4">
-              {products.map((product) => (
-                <article
-                  className="rounded-2xl border border-slate-200 bg-slate-50 p-4"
-                  key={product.id}
-                >
-                  <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(280px,360px)] xl:items-start">
-                    <div className="space-y-1">
-                      <h4 className="font-semibold text-slate-950">
-                        {product.name}
-                      </h4>
-
-                      <p className="text-sm text-slate-600">
-                        SKU: {product.sku}
-                      </p>
-
-                      {product.barcode ? (
-                        <p className="text-sm text-slate-600">
-                          Código: {product.barcode}
-                        </p>
-                      ) : null}
-
-                      <p className="text-sm text-slate-600">
-                        Estoque: {product.stockCurrent} {product.unit ?? "un."}
-                      </p>
-
-                      <p className="font-semibold text-slate-950">
-                        {formatCurrency(product.retailPriceCents)}
-                      </p>
-                    </div>
-
-                    <form
-                      action={addPdvCartItemAction}
-                      className="grid w-full min-w-0 gap-3"
-                    >
-                      <input
-                        type="hidden"
-                        name="productId"
-                        value={product.id}
-                      />
-
-                      <div className="grid gap-3 sm:grid-cols-2">
-                        <label className="space-y-2">
-                          <span className="field-label">Quantidade</span>
-                          <input
-                            className="field-input"
-                            type="number"
-                            name="quantity"
-                            min={1}
-                            max={product.stockCurrent}
-                            defaultValue={1}
-                            required
-                          />
-                        </label>
-
-                        <label className="space-y-2">
-                          <span className="field-label">Preço PDV</span>
-                          <input
-                            className="field-input"
-                            name="overrideUnitPrice"
-                            inputMode="decimal"
-                            placeholder={formatCurrencyInput(
-                              product.retailPriceCents,
-                            )}
-                          />
-                        </label>
-                      </div>
-
-                      <label className="space-y-2">
-                        <span className="field-label">
-                          Motivo do aumento de preço
-                        </span>
-                        <input
-                          className="field-input"
-                          name="overrideReason"
-                          placeholder="Informe o motivo do aumento"
-                        />
-                      </label>
-
-                      <button type="submit" className="button-primary">
-                        Adicionar ao PDV
-                      </button>
-                    </form>
-                  </div>
-                </article>
-              ))}
-            </div>
-          )}
-        </section>
-
-        <aside className="h-fit space-y-5 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-          <div>
-            <h3 className="text-lg font-semibold text-slate-950">
-              Carrinho PDV
-            </h3>
-
-            <p className="mt-1 text-sm leading-6 text-slate-600">
-              Revise os itens antes de finalizar. A baixa de estoque ocorre na
-              finalização da venda.
-            </p>
-          </div>
-
-          {cartRows.length === 0 ? (
-            <p className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
-              Nenhum item no carrinho PDV.
-            </p>
-          ) : (
-            <div className="space-y-4">
+        {cartRows.length === 0 ? (
+          <p className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
+            Nenhum item no carrinho PDV.
+          </p>
+        ) : (
+          <div className="mt-5 space-y-5">
+            <div className="grid gap-4 lg:grid-cols-2">
               {cartRows.map((item) => {
                 const hasOverride =
                   item.unitPriceCents !== item.retailPriceCents;
@@ -398,7 +279,7 @@ export default async function AdminPdvPage({
                     key={item.productId}
                   >
                     <div className="space-y-2">
-                      <h4 className="font-semibold text-slate-950">
+                      <h4 className="break-words font-semibold text-slate-950">
                         {item.name}
                       </h4>
 
@@ -465,14 +346,12 @@ export default async function AdminPdvPage({
                         />
                       </label>
 
-                      <div className="flex flex-wrap gap-2">
-                        <button type="submit" className="button-secondary">
-                          Atualizar
-                        </button>
-                      </div>
+                      <button type="submit" className="button-secondary">
+                        Atualizar
+                      </button>
                     </form>
 
-                    <div className="mt-4 flex items-center justify-between gap-3">
+                    <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
                       <p className="font-semibold text-slate-950">
                         {formatCurrency(item.lineTotalCents)}
                       </p>
@@ -495,65 +374,181 @@ export default async function AdminPdvPage({
                   </article>
                 );
               })}
-
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                <div className="flex items-center justify-between gap-4">
-                  <span className="text-sm font-medium text-slate-600">
-                    Total
-                  </span>
-
-                  <strong className="text-xl text-slate-950">
-                    {formatCurrency(subtotalCents)}
-                  </strong>
-                </div>
-              </div>
-
-              <form action={finalizePdvSaleAction} className="space-y-4">
-                <label className="space-y-2">
-                  <span className="field-label">Forma de pagamento</span>
-                  <select
-                    className="field-input"
-                    name="paymentMethod"
-                    defaultValue="PIX"
-                    required
-                  >
-                    <option value="PIX">PIX</option>
-                    <option value="CASH">Dinheiro</option>
-                  </select>
-                </label>
-
-                <label className="space-y-2">
-                  <span className="field-label">Consumidor</span>
-                  <input
-                    className="field-input"
-                    name="customerName"
-                    placeholder="Opcional"
-                  />
-                </label>
-
-                <label className="space-y-2">
-                  <span className="field-label">Observações</span>
-                  <textarea
-                    className="field-input min-h-24"
-                    name="notes"
-                    placeholder="Opcional"
-                  />
-                </label>
-
-                <button type="submit" className="button-primary w-full">
-                  Finalizar venda PDV
-                </button>
-              </form>
-
-              <form action={clearPdvCartAction}>
-                <button type="submit" className="button-secondary w-full">
-                  Limpar carrinho PDV
-                </button>
-              </form>
             </div>
-          )}
-        </aside>
-      </div>
+
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+              <div className="flex items-center justify-between gap-4">
+                <span className="text-sm font-medium text-slate-600">
+                  Total
+                </span>
+
+                <strong className="text-xl text-slate-950">
+                  {formatCurrency(subtotalCents)}
+                </strong>
+              </div>
+            </div>
+
+            <form
+              action={finalizePdvSaleAction}
+              className="grid gap-4 lg:grid-cols-[220px_minmax(0,1fr)_minmax(0,1fr)_auto]"
+            >
+              <label className="space-y-2">
+                <span className="field-label">Forma de pagamento</span>
+                <select
+                  className="field-input"
+                  name="paymentMethod"
+                  defaultValue="PIX"
+                  required
+                >
+                  <option value="PIX">PIX</option>
+                  <option value="CASH">Dinheiro</option>
+                </select>
+              </label>
+
+              <label className="space-y-2">
+                <span className="field-label">Consumidor</span>
+                <input
+                  className="field-input"
+                  name="customerName"
+                  placeholder="Opcional"
+                />
+              </label>
+
+              <label className="space-y-2">
+                <span className="field-label">Observações</span>
+                <input
+                  className="field-input"
+                  name="notes"
+                  placeholder="Opcional"
+                />
+              </label>
+
+              <div className="flex items-end">
+                <button type="submit" className="button-primary w-full">
+                  Finalizar venda
+                </button>
+              </div>
+            </form>
+
+            <form action={clearPdvCartAction}>
+              <button
+                type="submit"
+                className="button-secondary w-full sm:w-fit"
+              >
+                Limpar carrinho PDV
+              </button>
+            </form>
+          </div>
+        )}
+      </section>
+
+      <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+        <h3 className="text-lg font-semibold text-slate-950">Buscar produto</h3>
+
+        <form className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto]">
+          <input
+            className="field-input"
+            name="q"
+            placeholder="Buscar por nome, SKU ou código de barras"
+            defaultValue={search}
+          />
+
+          <button className="button-primary" type="submit">
+            Buscar
+          </button>
+        </form>
+      </section>
+
+      <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+        <h3 className="text-lg font-semibold text-slate-950">
+          Produtos disponíveis
+        </h3>
+
+        {products.length === 0 ? (
+          <p className="mt-4 text-sm text-slate-600">
+            Nenhum produto ativo com estoque disponível.
+          </p>
+        ) : (
+          <div className="mt-5 space-y-4">
+            {products.map((product) => (
+              <article
+                className="rounded-2xl border border-slate-200 bg-slate-50 p-4"
+                key={product.id}
+              >
+                <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(280px,380px)] lg:items-start">
+                  <div className="min-w-0 space-y-1">
+                    <h4 className="break-words font-semibold text-slate-950">
+                      {product.name}
+                    </h4>
+
+                    <p className="text-sm text-slate-600">SKU: {product.sku}</p>
+
+                    {product.barcode ? (
+                      <p className="text-sm text-slate-600">
+                        Código: {product.barcode}
+                      </p>
+                    ) : null}
+
+                    <p className="text-sm text-slate-600">
+                      Estoque: {product.stockCurrent} {product.unit ?? "un."}
+                    </p>
+
+                    <p className="font-semibold text-slate-950">
+                      {formatCurrency(product.retailPriceCents)}
+                    </p>
+                  </div>
+
+                  <form action={addPdvCartItemAction} className="grid gap-3">
+                    <input type="hidden" name="productId" value={product.id} />
+
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <label className="space-y-2">
+                        <span className="field-label">Quantidade</span>
+                        <input
+                          className="field-input"
+                          type="number"
+                          name="quantity"
+                          min={1}
+                          max={product.stockCurrent}
+                          defaultValue={1}
+                          required
+                        />
+                      </label>
+
+                      <label className="space-y-2">
+                        <span className="field-label">Preço PDV</span>
+                        <input
+                          className="field-input"
+                          name="overrideUnitPrice"
+                          inputMode="decimal"
+                          placeholder={formatCurrencyInput(
+                            product.retailPriceCents,
+                          )}
+                        />
+                      </label>
+                    </div>
+
+                    <label className="space-y-2">
+                      <span className="field-label">
+                        Motivo do aumento de preço
+                      </span>
+                      <input
+                        className="field-input"
+                        name="overrideReason"
+                        placeholder="Informe o motivo do aumento"
+                      />
+                    </label>
+
+                    <button type="submit" className="button-primary">
+                      Adicionar ao PDV
+                    </button>
+                  </form>
+                </div>
+              </article>
+            ))}
+          </div>
+        )}
+      </section>
     </section>
   );
 }

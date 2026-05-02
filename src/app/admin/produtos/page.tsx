@@ -42,18 +42,6 @@ const statusClassNames = {
 
 const productStatusOptions = Object.values(ProductStatus);
 
-const productRowGridWithUploadClassName =
-  "grid gap-4 xl:grid-cols-[minmax(240px,1.5fr)_88px_minmax(150px,0.9fr)_130px_110px_130px_minmax(170px,0.9fr)] xl:items-center";
-
-const productRowGridWithoutUploadClassName =
-  "grid gap-4 xl:grid-cols-[minmax(240px,1.6fr)_88px_minmax(150px,1fr)_130px_110px_130px] xl:items-center";
-
-const productHeaderGridWithUploadClassName =
-  "hidden gap-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs font-semibold uppercase tracking-[0.16em] text-slate-500 xl:grid xl:grid-cols-[minmax(240px,1.5fr)_88px_minmax(150px,0.9fr)_130px_110px_130px_minmax(170px,0.9fr)]";
-
-const productHeaderGridWithoutUploadClassName =
-  "hidden gap-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs font-semibold uppercase tracking-[0.16em] text-slate-500 xl:grid xl:grid-cols-[minmax(240px,1.6fr)_88px_minmax(150px,1fr)_130px_110px_130px]";
-
 function formatCurrency(cents: number): string {
   return new Intl.NumberFormat("pt-BR", {
     style: "currency",
@@ -291,16 +279,8 @@ export default async function AdminProductsPage({
     countsByStatus.map((item) => [item.status, item._count._all]),
   ) as Partial<Record<ProductStatus, number>>;
 
-  const productRowGridClassName = canUploadImages
-    ? productRowGridWithUploadClassName
-    : productRowGridWithoutUploadClassName;
-
-  const productHeaderGridClassName = canUploadImages
-    ? productHeaderGridWithUploadClassName
-    : productHeaderGridWithoutUploadClassName;
-
   return (
-    <section className="space-y-6">
+    <section className="mx-auto w-full max-w-7xl space-y-6">
       <header className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
         <span className="badge-brand">Produtos</span>
 
@@ -392,25 +372,21 @@ export default async function AdminProductsPage({
             Nenhum produto encontrado para os filtros selecionados.
           </p>
         ) : (
-          <div className="mt-5 space-y-3">
-            <div className={productHeaderGridClassName}>
-              <span>Produto</span>
-              <span>Imagem</span>
-              <span>Categoria</span>
-              <span>Preço</span>
-              <span>Estoque</span>
-              <span>Status</span>
-              {canUploadImages ? <span>Imagem</span> : null}
-            </div>
-
+          <div className="mt-5 space-y-4">
             {products.map((product) => (
               <article
                 key={product.id}
                 className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
               >
-                <div className={productRowGridClassName}>
+                <div
+                  className={
+                    canUploadImages
+                      ? "grid gap-4 xl:grid-cols-[minmax(0,1.4fr)_88px_minmax(0,0.9fr)_minmax(0,0.75fr)_minmax(0,0.65fr)_minmax(0,0.85fr)_minmax(0,0.75fr)] xl:items-center"
+                      : "grid gap-4 xl:grid-cols-[minmax(0,1.5fr)_88px_minmax(0,1fr)_minmax(0,0.8fr)_minmax(0,0.7fr)_minmax(0,0.9fr)] xl:items-center"
+                  }
+                >
                   <div className="min-w-0">
-                    <span className="mb-1 block text-xs font-semibold uppercase tracking-[0.16em] text-slate-500 xl:hidden">
+                    <span className="mb-1 block text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
                       Produto
                     </span>
 
@@ -437,7 +413,7 @@ export default async function AdminProductsPage({
                   </div>
 
                   <div className="min-w-0">
-                    <span className="mb-1 block text-xs font-semibold uppercase tracking-[0.16em] text-slate-500 xl:hidden">
+                    <span className="mb-1 block text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
                       Imagem
                     </span>
 
@@ -448,7 +424,7 @@ export default async function AdminProductsPage({
                   </div>
 
                   <div className="min-w-0 text-sm text-slate-600">
-                    <span className="mb-1 block text-xs font-semibold uppercase tracking-[0.16em] text-slate-500 xl:hidden">
+                    <span className="mb-1 block text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
                       Categoria
                     </span>
 
@@ -459,7 +435,7 @@ export default async function AdminProductsPage({
                   </div>
 
                   <div className="min-w-0 text-sm text-slate-700">
-                    <span className="mb-1 block text-xs font-semibold uppercase tracking-[0.16em] text-slate-500 xl:hidden">
+                    <span className="mb-1 block text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
                       Preço
                     </span>
 
@@ -475,7 +451,7 @@ export default async function AdminProductsPage({
                   </div>
 
                   <div className="min-w-0 text-sm text-slate-700">
-                    <span className="mb-1 block text-xs font-semibold uppercase tracking-[0.16em] text-slate-500 xl:hidden">
+                    <span className="mb-1 block text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
                       Estoque
                     </span>
 
@@ -485,26 +461,27 @@ export default async function AdminProductsPage({
                         {product.stockCurrent}
                       </strong>
                     </p>
+
                     <p className="mt-1 text-xs text-slate-500">
                       Mínimo: {product.stockMin}
                     </p>
                   </div>
 
                   <div className="min-w-0">
-                    <span className="mb-1 block text-xs font-semibold uppercase tracking-[0.16em] text-slate-500 xl:hidden">
+                    <span className="mb-1 block text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
                       Status
                     </span>
 
                     <ProductStatusBadge status={product.status} />
 
-                    <p className="mt-2 text-xs text-slate-500">
+                    <p className="mt-2 text-xs leading-5 text-slate-500">
                       Atualizado em {formatDateTime(product.updatedAt)}
                     </p>
                   </div>
 
                   {canUploadImages ? (
                     <div className="min-w-0">
-                      <span className="mb-1 block text-xs font-semibold uppercase tracking-[0.16em] text-slate-500 xl:hidden">
+                      <span className="mb-1 block text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
                         Imagem
                       </span>
 

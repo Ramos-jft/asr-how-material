@@ -20,7 +20,7 @@ export function LoginForm({
   description = "Informe seu e-mail e senha para continuar.",
   submitLabel = "Entrar",
   pendingLabel = "Entrando...",
-  emailPlaceholder = "email@exemplo.com",
+  emailPlaceholder,
   loginIntent,
 }: LoginFormProps) {
   const [state, formAction, isPending] = useActionState(
@@ -51,7 +51,7 @@ export function LoginForm({
           type="email"
           autoComplete="email"
           className="field-input"
-          placeholder={emailPlaceholder}
+          {...(emailPlaceholder ? { placeholder: emailPlaceholder } : {})}
           required
         />
       </div>
@@ -67,7 +67,6 @@ export function LoginForm({
           type="password"
           autoComplete="current-password"
           className="field-input"
-          placeholder="••••••••"
           required
         />
       </div>
