@@ -13,6 +13,7 @@ export type LoginFormState = {
 };
 
 const ADMIN_INTERNAL_LOGIN = "admin@admin";
+const MIN_PASSWORD_LENGTH = 6;
 
 type LoginIntent = "admin" | "buyer";
 
@@ -30,7 +31,12 @@ const loginIdentifierSchema = z
 
 const loginSchema = z.object({
   email: loginIdentifierSchema,
-  password: z.string().min(5, "A senha deve ter pelo menos 5 caracteres."),
+  password: z
+    .string()
+    .min(
+      MIN_PASSWORD_LENGTH,
+      `A senha deve ter pelo menos ${MIN_PASSWORD_LENGTH} caracteres.`,
+    ),
 });
 
 function getLoginIntent(formData: FormData): LoginIntent | undefined {

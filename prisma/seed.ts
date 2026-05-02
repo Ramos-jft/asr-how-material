@@ -3,6 +3,8 @@ import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
 
+const MIN_PASSWORD_LENGTH = 6;
+
 const DEFAULT_DEV_ADMIN_EMAIL = "admin@materialasr.local";
 const DEFAULT_ADMIN_NAME = "Administrador Inicial";
 
@@ -77,8 +79,10 @@ function validateEmail(email: string, source: string): void {
 }
 
 function validatePassword(password: string, source: string): void {
-  if (password.trim().length === 0) {
-    throw new Error(`${source} não pode ficar vazio.`);
+  if (password.trim().length < MIN_PASSWORD_LENGTH) {
+    throw new Error(
+      `${source} precisa ter pelo menos ${MIN_PASSWORD_LENGTH} caracteres.`,
+    );
   }
 }
 
